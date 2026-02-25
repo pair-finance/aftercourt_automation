@@ -32,3 +32,28 @@ stages:
       hash: md5
       md5: fc45ad3eca8d16e7abf7277301de94e8
       size: 38628448
+  tokenize_ladung:
+    cmd: python src/tokenization/tokenization_ladung.py data/prepared/ladung 
+      data/tokenized/ladung
+    deps:
+    - path: data/prepared/ladung/test.csv
+      hash: md5
+      md5: 6a87c057bf51116218ef3f8990c15254
+      size: 10094647
+    - path: data/prepared/ladung/train.csv
+      hash: md5
+      md5: fc45ad3eca8d16e7abf7277301de94e8
+      size: 38628448
+    - path: src/tokenization/tokenization_ladung.py
+      hash: md5
+      md5: 60747620f6cc8c054b3fe1ca4bf888ca
+      size: 2734
+    outs:
+    - path: data/tokenized/ladung/test.csv
+      hash: md5
+      md5: 501a0fbb4c1554137bbfb78fe355090b
+      size: 13655254
+    - path: data/tokenized/ladung/train.csv
+      hash: md5
+      md5: 926803f9d39f2504497b0f6a988e51ea
+      size: 52344500
