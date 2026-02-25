@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("tokenize_ladung")
 
 
-def generate_and_save_train_features(train_input: str, train_output: str, tokenizer: ClassificationSpacyLemmaTokenizer):
+def generate_and_save_train_tokenized(train_input: str, train_output: str, tokenizer: ClassificationSpacyLemmaTokenizer):
     logger.info(f"Reading train data from {train_input}")
     df_train = pd.read_csv(train_input)
     logger.info(f"Tokenizing {len(df_train)} train rows")
@@ -30,7 +30,7 @@ def generate_and_save_train_features(train_input: str, train_output: str, tokeni
     logger.info(f"Train features saved to {train_output}")
 
 
-def generate_and_save_test_features(test_input: str, test_output: str, tokenizer: ClassificationSpacyLemmaTokenizer):
+def generate_and_save_test_tokenized(test_input: str, test_output: str, tokenizer: ClassificationSpacyLemmaTokenizer):
     logger.info(f"Reading test data from {test_input}")
     df_test = pd.read_csv(test_input)
     logger.info(f"Tokenizing {len(df_test)} test rows")
@@ -61,13 +61,13 @@ if __name__ == "__main__":
     logger.info("Tokenizer loaded")
 
     logger.info("Tokenizing train and test data...")
-    generate_and_save_train_features(
+    generate_and_save_train_tokenized(
         train_input=train_input,
         train_output=train_output,
         tokenizer=tokenizer
     )
 
-    generate_and_save_test_features(
+    generate_and_save_test_tokenized(
         test_input=test_input,
         test_output=test_output,
         tokenizer=tokenizer
