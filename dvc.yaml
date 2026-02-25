@@ -1,0 +1,13 @@
+stages:
+  prepare_ladung:
+    cmd: python src/prepare/prepare_ladung.py data/raw/final_raw_data.csv
+    deps:
+    - data/raw/final_raw_data.csv
+    - src/prepare/prepare_ladung.py
+    params:
+    - prepare.ladung
+    - prepare.seed
+    - prepare.split
+    outs:
+    - data/prepared/ladung/test.csv
+    - data/prepared/ladung/train.csv
