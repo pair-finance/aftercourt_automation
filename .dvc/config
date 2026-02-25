@@ -1,2 +1,6 @@
 [core]
     autostage = true
+    remote = s3remote
+['remote "s3remote"']
+    url = s3://pair-data-engineering-new/aftercourt_automation_artifacts/
+    profile = 739275445236_DataScienceUser
