@@ -1,0 +1,3 @@
+[submodule "intent_recognition"]
+	path = intent_recognition
+	url = https://github.com/pair-finance/intent_recognition.git
