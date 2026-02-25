@@ -1,0 +1,20 @@
+prepare:
+  split: 0.20
+  seed: 42
+  ladung:
+    aftercourt_preprocessing:
+      normalize_whitespace: True
+      remove_short_lines: True
+      short_line_threshold: 3
+      remove_html_tags: True
+      lowercase: True
+    target_col: is_ladung
+
+  pfub:
+    aftercourt_preprocessing:
+      normalize_whitespace: True
+      remove_short_lines: True
+      short_line_threshold: 3
+      remove_html_tags: True
+      lowercase: True
+    target_col: is_pfub

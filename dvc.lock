@@ -1,0 +1,34 @@
+schema: '2.0'
+stages:
+  prepare_ladung:
+    cmd: python src/prepare/prepare_ladung.py data/raw/final_raw_data.csv
+    deps:
+    - path: data/raw/final_raw_data.csv
+      hash: md5
+      md5: b23374870adbee48a99663f1221bc934
+      size: 32209458
+    - path: src/prepare/prepare_ladung.py
+      hash: md5
+      md5: 60d304a9803f1db7550da972db481c97
+      size: 3482
+    params:
+      params.yaml:
+        prepare.ladung:
+          aftercourt_preprocessing:
+            normalize_whitespace: true
+            remove_short_lines: true
+            short_line_threshold: 3
+            remove_html_tags: true
+            lowercase: true
+          target_col: is_ladung
+        prepare.seed: 42
+        prepare.split: 0.2
+    outs:
+    - path: data/prepared/ladung/test.csv
+      hash: md5
+      md5: 6a87c057bf51116218ef3f8990c15254
+      size: 10094647
+    - path: data/prepared/ladung/train.csv
+      hash: md5
+      md5: fc45ad3eca8d16e7abf7277301de94e8
+      size: 38628448
