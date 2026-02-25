@@ -1,0 +1,5 @@
+outs:
+- md5: 1a2612a94d77dab539343ce20441178a
+  size: 476263
+  hash: md5
+  path: 12-01-2026_binary_pfub_rf_classifier_v1.dill

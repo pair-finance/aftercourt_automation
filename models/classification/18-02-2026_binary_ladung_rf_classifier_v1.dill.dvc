@@ -1,0 +1,5 @@
+outs:
+- md5: 42a76f839696f3a4aeb8c5a6ee54cf08
+  size: 567152
+  hash: md5
+  path: 18-02-2026_binary_ladung_rf_classifier_v1.dill
