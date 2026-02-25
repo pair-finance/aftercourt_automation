@@ -1,0 +1,5 @@
+outs:
+- md5: 91a70fe2955eb34549c65a7f5f8c7ad7
+  size: 74531958
+  hash: md5
+  path: 05-12-2026_tf_idf_vectorizer_v1.dill
