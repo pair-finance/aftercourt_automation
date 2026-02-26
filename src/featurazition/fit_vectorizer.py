@@ -23,7 +23,7 @@ logger = logging.getLogger("fit_vectorizer_ladung")
 
 
 if __name__ == "__main__":
-    params = yaml.safe_load(open("params.yaml"))["featurazition"]
+    params = yaml.safe_load(open("params.yaml"))["fit_vectorizer"]
     seed = params["seed"]
     vec_params = params["vectorizer"]
 
