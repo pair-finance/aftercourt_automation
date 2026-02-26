@@ -25,15 +25,14 @@ stages:
     - data/tokenized/${prepare.target}/train.csv
     - data/tokenized/${prepare.target}/test.csv
   fit_vectorizer:
-    desc: Fit a shared TF-IDF vectorizer on the training data
-    cmd: python src/featurazition/fit_vectorizer.py data/prepared/${prepare.target}/train.csv models/vectorizers/vectorizer.pkl
+    desc: Fit a shared TF-IDF vectorizer on ladung training data. Shared across all targets, does not depend on prepare.target.
+    cmd: python src/featurazition/fit_vectorizer.py data/prepared/ladung/train.csv models/vectorizers/vectorizer.pkl
     deps:
     - src/featurazition/fit_vectorizer.py
-    - data/prepared/${prepare.target}/train.csv
+    - data/prepared/ladung/train.csv
     params:
-    - prepare.target
-    - featurazition.seed
-    - featurazition.vectorizer
+    - fit_vectorizer.seed
+    - fit_vectorizer.vectorizer
     outs:
     - models/vectorizers/vectorizer.pkl
   featurize:
@@ -46,8 +45,6 @@ stages:
     params:
     - prepare.target
     - prepare.${prepare.target}.target_col
-    - featurazition.seed
-    - featurazition.vectorizer
     outs:
     - data/featurized/${prepare.target}/train_features.npz
     - data/featurized/${prepare.target}/train_labels.npy

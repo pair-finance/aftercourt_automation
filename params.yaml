@@ -20,7 +20,7 @@ prepare:
       lowercase: True
     target_col: is_pfub
 
-featurazition:
+fit_vectorizer:
   seed: 1
   vectorizer:
     max_features: 200
