@@ -57,3 +57,133 @@ stages:
       hash: md5
       md5: 926803f9d39f2504497b0f6a988e51ea
       size: 52344500
+  prepare:
+    cmd: python src/prepare/prepare.py data/raw/final_raw_data.csv
+    deps:
+    - path: data/raw/final_raw_data.csv
+      hash: md5
+      md5: b23374870adbee48a99663f1221bc934
+      size: 32209458
+    - path: src/prepare/prepare.py
+      hash: md5
+      md5: 07843d2d062eeab3ea98c007f995ae7a
+      size: 3501
+    params:
+      params.yaml:
+        prepare.ladung:
+          aftercourt_preprocessing:
+            normalize_whitespace: true
+            remove_short_lines: true
+            short_line_threshold: 3
+            remove_html_tags: true
+            lowercase: true
+          target_col: is_ladung
+        prepare.seed: 42
+        prepare.split: 0.2
+        prepare.target: ladung
+    outs:
+    - path: data/prepared/ladung/test.csv
+      hash: md5
+      md5: 6a87c057bf51116218ef3f8990c15254
+      size: 10094647
+    - path: data/prepared/ladung/train.csv
+      hash: md5
+      md5: fc45ad3eca8d16e7abf7277301de94e8
+      size: 38628448
+  tokenize:
+    cmd: python src/tokenization/tokenization_ladung.py data/prepared/ladung 
+      data/tokenized/ladung
+    deps:
+    - path: data/prepared/ladung/test.csv
+      hash: md5
+      md5: 6a87c057bf51116218ef3f8990c15254
+      size: 10094647
+    - path: data/prepared/ladung/train.csv
+      hash: md5
+      md5: fc45ad3eca8d16e7abf7277301de94e8
+      size: 38628448
+    - path: src/tokenization/tokenization_ladung.py
+      hash: md5
+      md5: 2a12773f59cbede344ec97ec1dd0d4c1
+      size: 2738
+    params:
+      params.yaml:
+        prepare.target: ladung
+    outs:
+    - path: data/tokenized/ladung/test.csv
+      hash: md5
+      md5: 501a0fbb4c1554137bbfb78fe355090b
+      size: 13655254
+    - path: data/tokenized/ladung/train.csv
+      hash: md5
+      md5: 926803f9d39f2504497b0f6a988e51ea
+      size: 52344500
+  fit_vectorizer:
+    cmd: python src/featurazition/fit_vectorizer.py 
+      data/prepared/ladung/train.csv models/vectorizers/vectorizer.pkl
+    deps:
+    - path: data/prepared/ladung/train.csv
+      hash: md5
+      md5: fc45ad3eca8d16e7abf7277301de94e8
+      size: 38628448
+    - path: src/featurazition/fit_vectorizer.py
+      hash: md5
+      md5: 78c96771d508cc15e21f7a0a4dda6027
+      size: 2232
+    params:
+      params.yaml:
+        fit_vectorizer.seed: 1
+        fit_vectorizer.vectorizer:
+          max_features: 200
+          ngram_range_min: 1
+          ngram_range_max: 1
+          norm: l2
+          min_df: 2
+          max_df: 0.95
+          lowercase: false
+    outs:
+    - path: models/vectorizers/vectorizer.pkl
+      hash: md5
+      md5: 8e2287b4c2fe6b10553d56a11699d133
+      size: 74593834
+  featurize:
+    cmd: python src/featurazition/featurazition.py data/prepared/ladung 
+      models/vectorizers/vectorizer.pkl data/featurized/ladung
+    deps:
+    - path: data/prepared/ladung/test.csv
+      hash: md5
+      md5: 6a87c057bf51116218ef3f8990c15254
+      size: 10094647
+    - path: data/prepared/ladung/train.csv
+      hash: md5
+      md5: fc45ad3eca8d16e7abf7277301de94e8
+      size: 38628448
+    - path: models/vectorizers/vectorizer.pkl
+      hash: md5
+      md5: 8e2287b4c2fe6b10553d56a11699d133
+      size: 74593834
+    - path: src/featurazition/featurazition.py
+      hash: md5
+      md5: c0e4db8efca1d7a3440e8cf218f61b76
+      size: 2656
+    params:
+      params.yaml:
+        prepare.ladung.target_col: is_ladung
+        prepare.target: ladung
+    outs:
+    - path: data/featurized/ladung/test_features.npz
+      hash: md5
+      md5: 605df2b3aeb44166970bf3b347ac988f
+      size: 499976
+    - path: data/featurized/ladung/test_labels.npy
+      hash: md5
+      md5: a8ccd291281feea4523df6bfbc8087a2
+      size: 1199
+    - path: data/featurized/ladung/train_features.npz
+      hash: md5
+      md5: f462afa1e0d38836392ae792bd078b73
+      size: 1947078
+    - path: data/featurized/ladung/train_labels.npy
+      hash: md5
+      md5: 4408b52c251dd987a9ffadd6ead525f9
+      size: 4412
