@@ -1,39 +1,61 @@
 stages:
-  prepare_ladung:
-    cmd: python src/prepare/prepare_ladung.py data/raw/final_raw_data.csv
+  prepare:
+    cmd: python src/prepare/prepare.py data/raw/final_raw_data.csv
     deps:
     - data/raw/final_raw_data.csv
-    - src/prepare/prepare_ladung.py
+    - src/prepare/prepare.py
     params:
-    - prepare.ladung
+    - prepare.target
+    - prepare.${prepare.target}
     - prepare.seed
     - prepare.split
     outs:
-    - data/prepared/ladung/test.csv
-    - data/prepared/ladung/train.csv
-  tokenize_ladung:
+    - data/prepared/${prepare.target}/test.csv
+    - data/prepared/${prepare.target}/train.csv
+  tokenize:
     frozen: true
-    cmd: python src/tokenization/tokenization_ladung.py data/prepared/ladung data/tokenized/ladung
+    cmd: python src/tokenization/tokenization_ladung.py data/prepared/${prepare.target} data/tokenized/${prepare.target}
     deps:
     - src/tokenization/tokenization_ladung.py
-    - data/prepared/ladung/train.csv
-    - data/prepared/ladung/test.csv
+    - data/prepared/${prepare.target}/train.csv
+    - data/prepared/${prepare.target}/test.csv
+    params:
+    - prepare.target
     outs:
-    - data/tokenized/ladung/train.csv
-    - data/tokenized/ladung/test.csv
+    - data/tokenized/${prepare.target}/train.csv
+    - data/tokenized/${prepare.target}/test.csv
   fit_vectorizer:
-    cmd: python src/featurazition/fit_vectorizer.py data/prepared/ladung/train.csv models/vectorizers/vectorizer.pkl
+    desc: Fit a shared TF-IDF vectorizer on the training data
+    cmd: python src/featurazition/fit_vectorizer.py data/prepared/${prepare.target}/train.csv models/vectorizers/vectorizer.pkl
     deps:
     - src/featurazition/fit_vectorizer.py
-    - data/prepared/ladung/train.csv
+    - data/prepared/${prepare.target}/train.csv
     params:
+    - prepare.target
     - featurazition.seed
     - featurazition.vectorizer
     outs:
     - models/vectorizers/vectorizer.pkl
+  featurize:
+    cmd: python src/featurazition/featurazition.py data/prepared/${prepare.target} models/vectorizers/vectorizer.pkl data/featurized/${prepare.target}
+    deps:
+    - src/featurazition/featurazition.py
+    - data/prepared/${prepare.target}/train.csv
+    - data/prepared/${prepare.target}/test.csv
+    - models/vectorizers/vectorizer.pkl
+    params:
+    - prepare.target
+    - prepare.${prepare.target}.target_col
+    - featurazition.seed
+    - featurazition.vectorizer
+    outs:
+    - data/featurized/${prepare.target}/train_features.npz
+    - data/featurized/${prepare.target}/train_labels.npy
+    - data/featurized/${prepare.target}/test_features.npz
+    - data/featurized/${prepare.target}/test_labels.npy
 
 artifacts:
   tf-idf-vectorizer:
     path: models/vectorizers/vectorizer.pkl
     type: model
-    desc: TF-IDF vectorizer for text featurization
+    desc: TF-IDF vectorizer for text featurization. Shared across documents. Therefore the stage for fitting vectorizer is not parameterized by target.
