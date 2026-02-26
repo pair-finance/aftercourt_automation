@@ -26,15 +26,16 @@ from intent_recognition.src.domain.base.blueprints import AfterCourtPreprocessin
 
 if __name__ == "__main__":
     params = yaml.safe_load(open("params.yaml"))["prepare"]
-    ladung_params = params["ladung"]
+    target = params["target"]
+    target_params = params[target]
 
     if len(sys.argv) != 2:
         sys.stderr.write("Arguments error. Usage:\n")
-        sys.stderr.write("\tpython src/prepare/prepare_ladung.py data-file\n")
+        sys.stderr.write("\tpython src/prepare/prepare.py data-file\n")
         sys.exit(1)
 
     # Initialize preprocessing configuration and processor
-    preprocess_params = ladung_params["aftercourt_preprocessing"]
+    preprocess_params = target_params["aftercourt_preprocessing"]
     PREPROCESS_CONFIG = AfterCourtPreprocessingBlueprint.from_dict({
         "clean_text_type": "preprocessed",
         "normalize_whitespace": preprocess_params["normalize_whitespace"],
@@ -62,11 +63,11 @@ if __name__ == "__main__":
         df,
         test_size=params["split"],
         random_state=params["seed"],
-        stratify=df[ladung_params["target_col"]]
+        stratify=df[target_params["target_col"]]
     )
 
     # Write outputs
-    output_dir = os.path.join("data", "prepared", "ladung")
+    output_dir = os.path.join("data", "prepared", target)
     output_train = os.path.join(output_dir, "train.csv")
     output_test = os.path.join(output_dir, "test.csv")
 
@@ -74,7 +75,7 @@ if __name__ == "__main__":
     train_df.to_csv(output_train, index=False)
     test_df.to_csv(output_test, index=False)
 
-    target_col = ladung_params["target_col"]
+    target_col = target_params["target_col"]
     logger.info(f"Train size: {len(train_df)}, Test size: {len(test_df)}")
     logger.info(f"Train {target_col} dist: {train_df[target_col].value_counts(normalize=True).to_dict()}")
     logger.info(f"Test {target_col} dist: {test_df[target_col].value_counts(normalize=True).to_dict()}")

@@ -39,19 +39,19 @@ def featurize_and_save(input_path: str, output_features_path: str, output_labels
 
 
 if __name__ == "__main__":
-    params = yaml.safe_load(open("params.yaml"))["prepare"]
-    ladung_params = params["ladung"]
+    all_params = yaml.safe_load(open("params.yaml"))
+    prepare_params = all_params["prepare"]
+    target = prepare_params["target"]
+    target_col = prepare_params[target]["target_col"]
 
     if len(sys.argv) != 4:
         sys.stderr.write("Arguments error. Usage:\n")
-        sys.stderr.write("\tpython src/featurazition/featurazition_ladung.py input-dir vectorizer-path output-dir\n")
+        sys.stderr.write("\tpython src/featurazition/featurazition.py input-dir vectorizer-path output-dir\n")
         sys.exit(1)
 
     in_dir = sys.argv[1]
     vectorizer_path = sys.argv[2]
     out_dir = sys.argv[3]
-
-    target_col = ladung_params["target_col"]
 
     os.makedirs(out_dir, exist_ok=True)
 
