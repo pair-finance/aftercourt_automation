@@ -12,6 +12,7 @@ stages:
     - data/prepared/ladung/test.csv
     - data/prepared/ladung/train.csv
   tokenize_ladung:
+    frozen: true
     cmd: python src/tokenization/tokenization_ladung.py data/prepared/ladung data/tokenized/ladung
     deps:
     - src/tokenization/tokenization_ladung.py
@@ -20,3 +21,19 @@ stages:
     outs:
     - data/tokenized/ladung/train.csv
     - data/tokenized/ladung/test.csv
+  fit_vectorizer:
+    cmd: python src/featurazition/fit_vectorizer.py data/prepared/ladung/train.csv models/vectorizers/vectorizer.pkl
+    deps:
+    - src/featurazition/fit_vectorizer.py
+    - data/prepared/ladung/train.csv
+    params:
+    - featurazition.seed
+    - featurazition.vectorizer
+    outs:
+    - models/vectorizers/vectorizer.pkl
+
+artifacts:
+  tf-idf-vectorizer:
+    path: models/vectorizers/vectorizer.pkl
+    type: model
+    desc: TF-IDF vectorizer for text featurization
