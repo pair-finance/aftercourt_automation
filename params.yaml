@@ -18,3 +18,14 @@ prepare:
       remove_html_tags: True
       lowercase: True
     target_col: is_pfub
+
+featurazition:
+  seed: 1
+  vectorizer:
+    max_features: 200
+    ngram_range_min: 1
+    ngram_range_max: 1
+    norm: l2
+    min_df: 2
+    max_df: 0.95
+    lowercase: False
