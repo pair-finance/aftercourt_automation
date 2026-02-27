@@ -1,3 +1,7 @@
+mlflow:
+  tracking_uri: mlruns  # local directory; set to a remote URI (e.g. http://mlflow-server:5000) for shared tracking
+  experiment_name: probability_threshold_0.5
+
 prepare:
   target: ladung
   split: 0.20
@@ -38,4 +42,4 @@ train:
     random_state: 42
 
 evaluate:
-  threshold: 0.9
+  threshold: 0.5

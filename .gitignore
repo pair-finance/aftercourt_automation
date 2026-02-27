@@ -1,6 +1,9 @@
 # Custom ignores 
 assets/pdfs
 
+# MLflow local tracking store
+mlruns/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
