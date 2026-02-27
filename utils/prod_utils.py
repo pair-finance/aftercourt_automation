@@ -377,6 +377,45 @@ def get_data_by_attachment_id(attachment_id: str, analytics_db, s3, pdf_download
     return data[[col for col in cols if col in data.columns] + ['text']]
 
 
+def download_pdf_by_document_s3_info(s3, document_s3_bucket: str, document_s3_key: str, download_dir: str, file_name: str = None) -> str:
+    """
+    Download a PDF file from S3 using document_s3_bucket and document_s3_key
+    (as returned by get_data_by_egvp_id, get_data_by_ticket_uuid, etc.).
+
+    Args:
+        s3: boto3 S3 client
+        document_s3_bucket: S3 bucket name (from the document_s3_bucket column)
+        document_s3_key: S3 object key (from the document_s3_key column)
+        download_dir: Local directory to save the PDF
+        file_name: Optional custom file name. If None, uses the object key's file name
+
+    Returns:
+        str: Path to the downloaded PDF file
+    """
+    if file_name is None:
+        file_name = os.path.basename(document_s3_key)
+
+    if not file_name.endswith('.pdf'):
+        file_name += '.pdf'
+
+    os.makedirs(download_dir, exist_ok=True)
+    download_path = os.path.join(download_dir, file_name)
+
+    try:
+        response = s3.get_object(Bucket=document_s3_bucket, Key=document_s3_key)
+        pdf_content = response['Body'].read()
+
+        with open(download_path, 'wb') as pdf_file:
+            pdf_file.write(pdf_content)
+
+        print(f"✅ PDF downloaded successfully: {download_path}")
+        return download_path
+
+    except Exception as e:
+        print(f"❌ Error downloading PDF: {str(e)}")
+        raise
+
+
 def download_pdf_from_s3(s3, bucket_name: str, object_key: str, download_dir: str, file_name: str = None) -> str:
     """
     Download a PDF file from S3 given the bucket name and object key.
