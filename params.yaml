@@ -4,20 +4,20 @@ prepare:
   seed: 42
   ladung:
     aftercourt_preprocessing:
-      normalize_whitespace: True
-      remove_short_lines: True
+      normalize_whitespace: true
+      remove_short_lines: true
       short_line_threshold: 3
-      remove_html_tags: True
-      lowercase: True
+      remove_html_tags: true
+      lowercase: true
     target_col: is_ladung
 
   pfub:
     aftercourt_preprocessing:
-      normalize_whitespace: True
-      remove_short_lines: True
+      normalize_whitespace: true
+      remove_short_lines: true
       short_line_threshold: 3
-      remove_html_tags: True
-      lowercase: True
+      remove_html_tags: true
+      lowercase: true
     target_col: is_pfub
 
 fit_vectorizer:
@@ -29,7 +29,7 @@ fit_vectorizer:
     norm: l2
     min_df: 2
     max_df: 0.95
-    lowercase: False
+    lowercase: false
 
 train:
   seed: 42
@@ -38,4 +38,4 @@ train:
     random_state: 42
 
 evaluate:
-  threshold: 0.6
+  threshold: 0.9
