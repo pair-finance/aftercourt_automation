@@ -1,3 +1,13 @@
+artifacts:
+  aftercourt-documents-dataset:
+    path: data/raw/final_raw_data.csv
+    type: dataset
+    desc: The raw dataset containing document text, metedata and labels. This is the starting point of the pipeline, used in the prepare stage to create train/test splits for each target.
+  tf-idf-vectorizer:
+    path: models/vectorizers/vectorizer.dill
+    type: model
+    desc: TF-IDF vectorizer for text featurization. Shared across documents. Therefore the stage for fitting vectorizer is not parameterized by target.
+
 stages:
   prepare:
     cmd: python src/prepare/prepare.py data/raw/final_raw_data.csv
@@ -51,8 +61,3 @@ stages:
     - data/featurized/${prepare.target}/test_features.npz
     - data/featurized/${prepare.target}/test_labels.npy
 
-artifacts:
-  tf-idf-vectorizer:
-    path: models/vectorizers/vectorizer.dill
-    type: model
-    desc: TF-IDF vectorizer for text featurization. Shared across documents. Therefore the stage for fitting vectorizer is not parameterized by target.
