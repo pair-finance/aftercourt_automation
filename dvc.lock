@@ -120,7 +120,7 @@ stages:
       size: 52344500
   fit_vectorizer:
     cmd: python src/featurazition/fit_vectorizer.py 
-      data/prepared/ladung/train.csv models/vectorizers/vectorizer.pkl
+      data/prepared/ladung/train.csv models/vectorizers/vectorizer.dill
     deps:
     - path: data/prepared/ladung/train.csv
       hash: md5
@@ -142,13 +142,13 @@ stages:
           max_df: 0.95
           lowercase: false
     outs:
-    - path: models/vectorizers/vectorizer.pkl
+    - path: models/vectorizers/vectorizer.dill
       hash: md5
-      md5: 8e2287b4c2fe6b10553d56a11699d133
+      md5: 30a5544202f98a3e1b1367ea33767cd4
       size: 74593834
   featurize:
     cmd: python src/featurazition/featurazition.py data/prepared/ladung 
-      models/vectorizers/vectorizer.pkl data/featurized/ladung
+      models/vectorizers/vectorizer.dill data/featurized/ladung
     deps:
     - path: data/prepared/ladung/test.csv
       hash: md5
@@ -158,9 +158,9 @@ stages:
       hash: md5
       md5: fc45ad3eca8d16e7abf7277301de94e8
       size: 38628448
-    - path: models/vectorizers/vectorizer.pkl
+    - path: models/vectorizers/vectorizer.dill
       hash: md5
-      md5: 8e2287b4c2fe6b10553d56a11699d133
+      md5: 30a5544202f98a3e1b1367ea33767cd4
       size: 74593834
     - path: src/featurazition/featurazition.py
       hash: md5

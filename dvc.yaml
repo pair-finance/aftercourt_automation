@@ -26,7 +26,7 @@ stages:
     - data/tokenized/${prepare.target}/test.csv
   fit_vectorizer:
     desc: Fit a shared TF-IDF vectorizer on ladung training data. Shared across all targets, does not depend on prepare.target.
-    cmd: python src/featurazition/fit_vectorizer.py data/prepared/ladung/train.csv models/vectorizers/vectorizer.pkl
+    cmd: python src/featurazition/fit_vectorizer.py data/prepared/ladung/train.csv models/vectorizers/vectorizer.dill
     deps:
     - src/featurazition/fit_vectorizer.py
     - data/prepared/ladung/train.csv
@@ -34,14 +34,14 @@ stages:
     - fit_vectorizer.seed
     - fit_vectorizer.vectorizer
     outs:
-    - models/vectorizers/vectorizer.pkl
+    - models/vectorizers/vectorizer.dill
   featurize:
-    cmd: python src/featurazition/featurazition.py data/prepared/${prepare.target} models/vectorizers/vectorizer.pkl data/featurized/${prepare.target}
+    cmd: python src/featurazition/featurazition.py data/prepared/${prepare.target} models/vectorizers/vectorizer.dill data/featurized/${prepare.target}
     deps:
     - src/featurazition/featurazition.py
     - data/prepared/${prepare.target}/train.csv
     - data/prepared/${prepare.target}/test.csv
-    - models/vectorizers/vectorizer.pkl
+    - models/vectorizers/vectorizer.dill
     params:
     - prepare.target
     - prepare.${prepare.target}.target_col
@@ -53,6 +53,6 @@ stages:
 
 artifacts:
   tf-idf-vectorizer:
-    path: models/vectorizers/vectorizer.pkl
+    path: models/vectorizers/vectorizer.dill
     type: model
     desc: TF-IDF vectorizer for text featurization. Shared across documents. Therefore the stage for fitting vectorizer is not parameterized by target.
