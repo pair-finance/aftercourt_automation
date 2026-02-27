@@ -187,3 +187,31 @@ stages:
       hash: md5
       md5: 4408b52c251dd987a9ffadd6ead525f9
       size: 4412
+  train:
+    cmd: python src/training/train.py data/featurized/ladung 
+      models/classification/ladung_rf_classifier.dill
+    deps:
+    - path: data/featurized/ladung/train_features.npz
+      hash: md5
+      md5: f462afa1e0d38836392ae792bd078b73
+      size: 1947078
+    - path: data/featurized/ladung/train_labels.npy
+      hash: md5
+      md5: 4408b52c251dd987a9ffadd6ead525f9
+      size: 4412
+    - path: src/training/train.py
+      hash: md5
+      md5: 278c4475e22c1580bc2ac712e44dab0e
+      size: 2052
+    params:
+      params.yaml:
+        prepare.target: ladung
+        train.classifier:
+          n_estimators: 100
+          random_state: 42
+        train.seed: 42
+    outs:
+    - path: models/classification/ladung_rf_classifier.dill
+      hash: md5
+      md5: 2a28166b09cd12a81f0461d9bb42124d
+      size: 463134

@@ -7,6 +7,10 @@ artifacts:
     path: models/vectorizers/vectorizer.dill
     type: model
     desc: TF-IDF vectorizer for text featurization. Shared across documents. Therefore the stage for fitting vectorizer is not parameterized by target.
+  ladung-rf-classifier:
+    path: models/classification/ladung_rf_classifier.dill
+    type: model
+    desc: Random Forest classifier trained on TF-IDF features for ladung documents.
 
 stages:
   prepare:
@@ -60,4 +64,16 @@ stages:
     - data/featurized/${prepare.target}/train_labels.npy
     - data/featurized/${prepare.target}/test_features.npz
     - data/featurized/${prepare.target}/test_labels.npy
+  train:
+    cmd: python src/training/train.py data/featurized/${prepare.target} models/classification/${prepare.target}_rf_classifier.dill
+    deps:
+    - src/training/train.py
+    - data/featurized/${prepare.target}/train_features.npz
+    - data/featurized/${prepare.target}/train_labels.npy
+    params:
+    - prepare.target
+    - train.seed
+    - train.classifier
+    outs:
+    - models/classification/${prepare.target}_rf_classifier.dill
 
