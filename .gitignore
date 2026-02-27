@@ -1,6 +1,6 @@
 # Custom ignores 
 assets/pdfs
-
+egvp_full_attachment_data_checkpoints/
 # MLflow local tracking store
 mlruns/
 
