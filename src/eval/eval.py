@@ -20,7 +20,16 @@ from sklearn.metrics import (
     roc_auc_score,
     confusion_matrix,
     classification_report,
+    RocCurveDisplay,
+    ConfusionMatrixDisplay,
+    PrecisionRecallDisplay,
 )
+import matplotlib
+matplotlib.use("Agg")  # headless backend for CI/servers
+import matplotlib.pyplot as plt
+import mlflow
+
+from src.mlflow_utils import init_mlflow, get_or_create_run, finish_pipeline_run
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("evaluate")
@@ -94,7 +103,7 @@ if __name__ == "__main__":
     logger.info(f"ROC-AUC:   {roc_auc:.4f}")
     logger.info(f"Confusion Matrix: {cm}")
 
-    # Save metrics JSON
+    # Save metrics JSON (kept for DVC compatibility)
     metrics_path = os.path.join(output_dir, "metrics.json")
     with open(metrics_path, "w") as f:
         json.dump(metrics, f, indent=2)
@@ -109,5 +118,62 @@ if __name__ == "__main__":
     with open(preds_path, "w") as f:
         json.dump(preds, f, indent=2)
     logger.info(f"Saved predictions to {preds_path}")
+
+    # ── MLflow: log evaluation metrics, artifacts & plots ──────────
+    target = all_params["prepare"]["target"]
+    init_mlflow()
+    with get_or_create_run("evaluate", run_name=f"{target}-{threshold}"):
+        # Scalar metrics
+        mlflow.log_metrics({
+            "accuracy": accuracy,
+            "precision": precision,
+            "recall": recall,
+            "f1_score": f1,
+            "roc_auc": roc_auc,
+            "threshold": threshold,
+            "test_samples": int(X_test.shape[0]),
+            "confusion_tn": cm[0][0],
+            "confusion_fp": cm[0][1],
+            "confusion_fn": cm[1][0],
+            "confusion_tp": cm[1][1],
+        })
+
+        # Log the JSON artefacts
+        mlflow.log_artifact(metrics_path, artifact_path="evaluation")
+        mlflow.log_artifact(preds_path, artifact_path="evaluation")
+
+        # ── Generate & log plots ──────────────────────────────────
+        plots_dir = os.path.join(output_dir, "plots")
+        os.makedirs(plots_dir, exist_ok=True)
+
+        # ROC curve
+        roc_display = RocCurveDisplay.from_predictions(y_test, y_pred_probs)
+        roc_display.ax_.set_title("ROC Curve")
+        roc_fig_path = os.path.join(plots_dir, "roc_curve.png")
+        roc_display.figure_.savefig(roc_fig_path, dpi=150, bbox_inches="tight")
+        plt.close(roc_display.figure_)
+        mlflow.log_artifact(roc_fig_path, artifact_path="evaluation/plots")
+
+        # Confusion matrix
+        cm_display = ConfusionMatrixDisplay.from_predictions(y_test, y_pred)
+        cm_display.ax_.set_title("Confusion Matrix")
+        cm_fig_path = os.path.join(plots_dir, "confusion_matrix.png")
+        cm_display.figure_.savefig(cm_fig_path, dpi=150, bbox_inches="tight")
+        plt.close(cm_display.figure_)
+        mlflow.log_artifact(cm_fig_path, artifact_path="evaluation/plots")
+
+        # Precision-Recall curve
+        pr_display = PrecisionRecallDisplay.from_predictions(y_test, y_pred_probs)
+        pr_display.ax_.set_title("Precision-Recall Curve")
+        pr_fig_path = os.path.join(plots_dir, "precision_recall_curve.png")
+        pr_display.figure_.savefig(pr_fig_path, dpi=150, bbox_inches="tight")
+        plt.close(pr_display.figure_)
+        mlflow.log_artifact(pr_fig_path, artifact_path="evaluation/plots")
+
+        logger.info("Logged metrics, artifacts & plots to MLflow")
+
+    # The evaluate stage is the last stage — clean up the active run marker
+    # so the next `dvc repro` creates a fresh MLflow run.
+    finish_pipeline_run()
 
     logger.info("Done!")

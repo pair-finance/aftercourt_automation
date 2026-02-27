@@ -201,8 +201,8 @@ stages:
       size: 4412
     - path: src/training/train.py
       hash: md5
-      md5: 278c4475e22c1580bc2ac712e44dab0e
-      size: 2052
+      md5: db0f49c35c7efb93d2c4f9fdf15b04a2
+      size: 3504
     params:
       params.yaml:
         prepare.target: ladung
@@ -213,7 +213,7 @@ stages:
     outs:
     - path: models/classification/ladung_rf_classifier.dill
       hash: md5
-      md5: 2a28166b09cd12a81f0461d9bb42124d
+      md5: cfbe231c2442098c01ca804f2af60cc1
       size: 463134
   evaluate:
     cmd: python src/eval/eval.py models/classification/ladung_rf_classifier.dill
@@ -229,20 +229,20 @@ stages:
       size: 1199
     - path: models/classification/ladung_rf_classifier.dill
       hash: md5
-      md5: 2a28166b09cd12a81f0461d9bb42124d
+      md5: cfbe231c2442098c01ca804f2af60cc1
       size: 463134
     - path: src/eval/eval.py
       hash: md5
-      md5: d1af216f87a479f768eecb699ffaab94
-      size: 3503
+      md5: 9d4ef66e29182ff4d0d7a1af6dbb9e22
+      size: 6418
     params:
       params.yaml:
-        evaluate.threshold: 0.9
+        evaluate.threshold: 0.5
         prepare.target: ladung
     outs:
     - path: data/evaluation/ladung/metrics.json
       hash: md5
-      md5: e32ff25c858bf99e6588b68b498159a9
+      md5: b9bd021fa0766bb3d745337c6343f475
       size: 257
     - path: data/evaluation/ladung/predictions.json
       hash: md5
