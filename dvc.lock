@@ -237,13 +237,13 @@ stages:
       size: 3503
     params:
       params.yaml:
-        evaluate.threshold: 0.6
+        evaluate.threshold: 0.9
         prepare.target: ladung
     outs:
     - path: data/evaluation/ladung/metrics.json
       hash: md5
-      md5: e562f4d8de5a06d2631f21bcf9f65f87
-      size: 273
+      md5: e32ff25c858bf99e6588b68b498159a9
+      size: 257
     - path: data/evaluation/ladung/predictions.json
       hash: md5
       md5: 517819439b47fa82116cad180df4f995
