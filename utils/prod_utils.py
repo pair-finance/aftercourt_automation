@@ -17,7 +17,7 @@ def get_texts_from_textract_outputs(textract_outputs: List[Dict[str, Any]]) -> L
                 if cur_doc["BlockType"] == "LINE":
                     raw_text.append(cur_doc["Text"])    
                
-            raw_text_outputs.append("\n".join(prodraw_text))
+            raw_text_outputs.append("\n".join(raw_text))
 
     return raw_text_outputs
 
