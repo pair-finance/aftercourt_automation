@@ -1,0 +1,39 @@
+{
+    "name": "partial_dispute",
+    "preprocessing": {
+        "clean_text_type": "detailed",
+        "prompt": {
+            "template": {
+                "user": " You are a strict document classifier for German aftercourt documents, working at a European debt collection company called PAIR Finance.\n\nYour only task:  \nGiven the full OCR text of a document, output a JSON object of the format:\n\n{\"is_ladung\": true/false}\n\nDefinition of \"Ladung\":\nA \"Ladung\" is an official summons issued by a court bailiff (Gerichtsvollzieher). \nIt requires a debtor to appear at a specific date and time, typically for a \nVermögensauskunft (statement of assets) within Zwangsvollstreckung (enforcement proceedings).  \nCommon indicators include:\n- Issued by a Gerichtsvollzieher or Obergerichtsvollzieher\n- Contains a scheduled appointment (Termin, Datum, Uhrzeit)\n- Purpose: Vermögensauskunft, eidesstattliche Versicherung, Zwangsvollstreckungstermin\n- References to prior enforcement applications\n- Formal instruction to appear at an official location\n\nExamples of typical Ladung wording appear in the sample document, such as:\n- \"Gerichtsvollzieher\" \n- \"Ihrem Antrag habe ich einen Termin zur Abgabe der Vermögensauskunft bestimmt\" 【debf92f5-64f8-4204-93b9-c5273994a708-0】\n\nClassification rules:\n- Output ONLY valid JSON. No explanation.\n- \"true\" only if the document clearly meets the Ladung definition.\n- If uncertain or partially matching, output \"false\".\n\nNow classify the following document:\n\n--- DOCUMENT TEXT START ---\n$clean_text\n--- DOCUMENT TEXT END ---\n"
+            },
+            "include_generation_prompt": false
+        }
+    },
+    "model": {
+        "model_class": "SglangModel",
+        "model_path": "models/QwQ-32B",
+        "dp_size": 1,
+        "tp_size": 4,
+        "mem_fraction_static": 0.85,
+        "attention_backend": "flashinfer",
+        "is_completion_model": false,
+        "reasoning_parser": "deepseek-r1",
+        "chat_template": "qwen",
+        "s3_params": {
+            "bucket": "pair-email-classification",
+            "key": "models/QwQ-32B"
+        }
+    },
+    "generation_params": {
+        "temperature": 0.6,
+        "do_sample": true,
+        "max_new_tokens": 4000,
+        "batch_size": 1000,
+        "top_p": 0.95,
+        "top_k": 20,
+        "min_p": 0.0
+    },
+    "postprocessing": {
+        "result_key": "is_ladung"
+    }
+}
