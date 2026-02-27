@@ -30,3 +30,9 @@ fit_vectorizer:
     min_df: 2
     max_df: 0.95
     lowercase: False
+
+train:
+  seed: 42
+  classifier:
+    n_estimators: 100
+    random_state: 42
