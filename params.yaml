@@ -36,3 +36,6 @@ train:
   classifier:
     n_estimators: 100
     random_state: 42
+
+evaluate:
+  threshold: 0.6

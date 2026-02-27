@@ -215,3 +215,36 @@ stages:
       hash: md5
       md5: 2a28166b09cd12a81f0461d9bb42124d
       size: 463134
+  evaluate:
+    cmd: python src/eval/eval.py models/classification/ladung_rf_classifier.dill
+      data/featurized/ladung data/evaluation/ladung
+    deps:
+    - path: data/featurized/ladung/test_features.npz
+      hash: md5
+      md5: 605df2b3aeb44166970bf3b347ac988f
+      size: 499976
+    - path: data/featurized/ladung/test_labels.npy
+      hash: md5
+      md5: a8ccd291281feea4523df6bfbc8087a2
+      size: 1199
+    - path: models/classification/ladung_rf_classifier.dill
+      hash: md5
+      md5: 2a28166b09cd12a81f0461d9bb42124d
+      size: 463134
+    - path: src/eval/eval.py
+      hash: md5
+      md5: d1af216f87a479f768eecb699ffaab94
+      size: 3503
+    params:
+      params.yaml:
+        evaluate.threshold: 0.6
+        prepare.target: ladung
+    outs:
+    - path: data/evaluation/ladung/metrics.json
+      hash: md5
+      md5: e562f4d8de5a06d2631f21bcf9f65f87
+      size: 273
+    - path: data/evaluation/ladung/predictions.json
+      hash: md5
+      md5: 517819439b47fa82116cad180df4f995
+      size: 52663

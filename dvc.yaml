@@ -76,4 +76,22 @@ stages:
     - train.classifier
     outs:
     - models/classification/${prepare.target}_rf_classifier.dill
+  evaluate:
+    cmd: python src/eval/eval.py models/classification/${prepare.target}_rf_classifier.dill data/featurized/${prepare.target} data/evaluation/${prepare.target}
+    deps:
+    - src/eval/eval.py
+    - models/classification/${prepare.target}_rf_classifier.dill
+    - data/featurized/${prepare.target}/test_features.npz
+    - data/featurized/${prepare.target}/test_labels.npy
+    params:
+    - prepare.target
+    - evaluate.threshold
+    metrics:
+    - data/evaluation/${prepare.target}/metrics.json:
+        cache: false
+    plots:
+    - data/evaluation/${prepare.target}/predictions.json:
+        cache: false
+        x: y_pred_prob
+        y: y_true
 
