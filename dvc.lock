@@ -62,8 +62,8 @@ stages:
     deps:
     - path: data/raw/final_raw_data.csv
       hash: md5
-      md5: b23374870adbee48a99663f1221bc934
-      size: 32209458
+      md5: c734bc228274b9f170c9a411d6da6b1d
+      size: 34105721
     - path: src/prepare/prepare.py
       hash: md5
       md5: 07843d2d062eeab3ea98c007f995ae7a
@@ -84,24 +84,24 @@ stages:
     outs:
     - path: data/prepared/ladung/test.csv
       hash: md5
-      md5: 6a87c057bf51116218ef3f8990c15254
-      size: 10094647
+      md5: efc1e3c85735d301b6483c22d7e1c5cd
+      size: 10585658
     - path: data/prepared/ladung/train.csv
       hash: md5
-      md5: fc45ad3eca8d16e7abf7277301de94e8
-      size: 38628448
+      md5: ccf76ca1fddef32fef1dd66f2216268b
+      size: 41028797
   tokenize:
     cmd: python src/tokenization/tokenization_ladung.py data/prepared/ladung 
       data/tokenized/ladung
     deps:
     - path: data/prepared/ladung/test.csv
       hash: md5
-      md5: 6a87c057bf51116218ef3f8990c15254
-      size: 10094647
+      md5: efc1e3c85735d301b6483c22d7e1c5cd
+      size: 10585658
     - path: data/prepared/ladung/train.csv
       hash: md5
-      md5: fc45ad3eca8d16e7abf7277301de94e8
-      size: 38628448
+      md5: ccf76ca1fddef32fef1dd66f2216268b
+      size: 41028797
     - path: src/tokenization/tokenization_ladung.py
       hash: md5
       md5: 2a12773f59cbede344ec97ec1dd0d4c1
@@ -124,8 +124,8 @@ stages:
     deps:
     - path: data/prepared/ladung/train.csv
       hash: md5
-      md5: fc45ad3eca8d16e7abf7277301de94e8
-      size: 38628448
+      md5: ccf76ca1fddef32fef1dd66f2216268b
+      size: 41028797
     - path: src/featurazition/fit_vectorizer.py
       hash: md5
       md5: 78c96771d508cc15e21f7a0a4dda6027
@@ -144,24 +144,24 @@ stages:
     outs:
     - path: models/vectorizers/vectorizer.dill
       hash: md5
-      md5: 30a5544202f98a3e1b1367ea33767cd4
-      size: 74593834
+      md5: 88ee16e190c8fe503341924613231566
+      size: 74616067
   featurize:
     cmd: python src/featurazition/featurazition.py data/prepared/ladung 
       models/vectorizers/vectorizer.dill data/featurized/ladung
     deps:
     - path: data/prepared/ladung/test.csv
       hash: md5
-      md5: 6a87c057bf51116218ef3f8990c15254
-      size: 10094647
+      md5: efc1e3c85735d301b6483c22d7e1c5cd
+      size: 10585658
     - path: data/prepared/ladung/train.csv
       hash: md5
-      md5: fc45ad3eca8d16e7abf7277301de94e8
-      size: 38628448
+      md5: ccf76ca1fddef32fef1dd66f2216268b
+      size: 41028797
     - path: models/vectorizers/vectorizer.dill
       hash: md5
-      md5: 30a5544202f98a3e1b1367ea33767cd4
-      size: 74593834
+      md5: 88ee16e190c8fe503341924613231566
+      size: 74616067
     - path: src/featurazition/featurazition.py
       hash: md5
       md5: c0e4db8efca1d7a3440e8cf218f61b76
@@ -173,32 +173,32 @@ stages:
     outs:
     - path: data/featurized/ladung/test_features.npz
       hash: md5
-      md5: 605df2b3aeb44166970bf3b347ac988f
-      size: 499976
+      md5: c044bc45790c41319743bbfecb055cc8
+      size: 508191
     - path: data/featurized/ladung/test_labels.npy
       hash: md5
-      md5: a8ccd291281feea4523df6bfbc8087a2
-      size: 1199
+      md5: ae1aa92865b8ebf2e6e82119d64be1ef
+      size: 1221
     - path: data/featurized/ladung/train_features.npz
       hash: md5
-      md5: f462afa1e0d38836392ae792bd078b73
-      size: 1947078
+      md5: 4918a078b541419e06322ac7ce47eebf
+      size: 2005512
     - path: data/featurized/ladung/train_labels.npy
       hash: md5
-      md5: 4408b52c251dd987a9ffadd6ead525f9
-      size: 4412
+      md5: 801293bfaa3ea54a0e6f5118f3eb2084
+      size: 4497
   train:
     cmd: python src/training/train.py data/featurized/ladung 
       models/classification/ladung_rf_classifier.dill
     deps:
     - path: data/featurized/ladung/train_features.npz
       hash: md5
-      md5: f462afa1e0d38836392ae792bd078b73
-      size: 1947078
+      md5: 4918a078b541419e06322ac7ce47eebf
+      size: 2005512
     - path: data/featurized/ladung/train_labels.npy
       hash: md5
-      md5: 4408b52c251dd987a9ffadd6ead525f9
-      size: 4412
+      md5: 801293bfaa3ea54a0e6f5118f3eb2084
+      size: 4497
     - path: src/training/train.py
       hash: md5
       md5: db0f49c35c7efb93d2c4f9fdf15b04a2
@@ -213,24 +213,24 @@ stages:
     outs:
     - path: models/classification/ladung_rf_classifier.dill
       hash: md5
-      md5: cfbe231c2442098c01ca804f2af60cc1
-      size: 463134
+      md5: 8283ae334de2317de3f373af5d6aea7e
+      size: 592592
   evaluate:
     cmd: python src/eval/eval.py models/classification/ladung_rf_classifier.dill
       data/featurized/ladung data/evaluation/ladung
     deps:
     - path: data/featurized/ladung/test_features.npz
       hash: md5
-      md5: 605df2b3aeb44166970bf3b347ac988f
-      size: 499976
+      md5: c044bc45790c41319743bbfecb055cc8
+      size: 508191
     - path: data/featurized/ladung/test_labels.npy
       hash: md5
-      md5: a8ccd291281feea4523df6bfbc8087a2
-      size: 1199
+      md5: ae1aa92865b8ebf2e6e82119d64be1ef
+      size: 1221
     - path: models/classification/ladung_rf_classifier.dill
       hash: md5
-      md5: cfbe231c2442098c01ca804f2af60cc1
-      size: 463134
+      md5: 8283ae334de2317de3f373af5d6aea7e
+      size: 592592
     - path: src/eval/eval.py
       hash: md5
       md5: 9d4ef66e29182ff4d0d7a1af6dbb9e22
@@ -242,9 +242,9 @@ stages:
     outs:
     - path: data/evaluation/ladung/metrics.json
       hash: md5
-      md5: b9bd021fa0766bb3d745337c6343f475
-      size: 257
+      md5: 013450898b245b7e84370a49f31b805a
+      size: 274
     - path: data/evaluation/ladung/predictions.json
       hash: md5
-      md5: 517819439b47fa82116cad180df4f995
-      size: 52663
+      md5: 2c8a30c80fa4c60e9af4498171a38767
+      size: 53745
