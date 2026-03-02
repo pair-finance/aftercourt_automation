@@ -50,6 +50,20 @@ def fill_generated_columns(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
+def validate_dtypes(raw_data: pd.DataFrame, new_data: pd.DataFrame) -> None:
+    """Assert that columns shared between new_data and raw_data have matching dtypes."""
+    shared_cols = [col for col in new_data.columns if col in raw_data.columns]
+    mismatches = {
+        col: {"raw_data": str(raw_data[col].dtype), "new_data": str(new_data[col].dtype)}
+        for col in shared_cols
+        if raw_data[col].dtype != new_data[col].dtype
+    }
+    assert len(mismatches) == 0, (
+        f"Dtype mismatch between raw data and new data for columns: {mismatches}. "
+        "Fix the new data dtypes before inserting."
+    )
+
+
 def deduplicate_against_existing(raw_data: pd.DataFrame, new_data: pd.DataFrame) -> pd.DataFrame:
     """Remove rows from new_data whose ticket_uuid already exists in raw_data."""
     existing_uuids = set(raw_data['ticket_uuid'])
@@ -60,6 +74,7 @@ def update_raw_data(raw_data: pd.DataFrame, new_data: pd.DataFrame) -> pd.DataFr
     """Full pipeline: validate, fill columns, deduplicate, and concatenate."""
     validate_required_columns(new_data)
     new_data = fill_generated_columns(new_data)
+    validate_dtypes(raw_data, new_data)
     new_data = deduplicate_against_existing(raw_data, new_data)
     return pd.concat([raw_data, new_data], ignore_index=True)
 
