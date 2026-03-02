@@ -222,6 +222,9 @@ def run(
     assert df['textract_job_id'].isna().sum() == 0, "There is textract_job_id with none value, check the input data"
     assert df['textract_s3_link'].isna().sum() == 0, "There is textract_s3_link with none value, check the input data"
 
+    # remove mail_attachments document type
+    df = df[df['document_type'] != 'mail_attachments']
+
     # Step 2 – ensure label defs exist (inserts only missing ones)
     document_types = df["document_type"].unique().tolist()
     label_to_id = ensure_label_defs(db, document_types)
