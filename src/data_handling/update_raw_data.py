@@ -90,6 +90,6 @@ if __name__ == "__main__":
     data_to_add = pd.read_csv(args.new_data_path)
 
     updated_raw_data = update_raw_data(raw_data, data_to_add)
-    #updated_raw_data.to_csv(args.raw_data_path, index=False)
+    updated_raw_data.to_csv(args.raw_data_path, index=False)
     print(f"Updated raw data saved to {args.raw_data_path}. Added {len(updated_raw_data) - len(raw_data)} new rows.")
     
