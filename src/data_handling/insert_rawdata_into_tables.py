@@ -29,12 +29,13 @@ RAW_DATA_PATH = "data/raw/final_raw_data.csv"
 # 1) Ensure label defs exist
 # ---------------------------------------------------------------------------
 
-def ensure_label_defs(db: DbConnection, document_types: list[str]) -> dict[str, int]:
+def ensure_label_defs(db: DbConnection, document_types: list[str], dry_run: bool = False) -> dict[str, int]:
     """
     For each document_type, insert into llm_label_defs only if it doesn't
     already exist (type + subtype='none' + nature='aftercourt').
 
     Returns a mapping {document_type: label_id}.
+    In dry_run mode, skips inserts and uses None as placeholder id for new labels.
     """
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     label_to_id: dict[str, int] = {}
@@ -52,6 +53,11 @@ def ensure_label_defs(db: DbConnection, document_types: list[str]) -> dict[str, 
             label_id = int(existing.iloc[0]["id"])
             logger.info(f"Label '{doc_type}' already exists with id={label_id}")
         else:
+            if dry_run:
+                logger.info(f"[DRY RUN] Would insert label '{doc_type}' into llm_label_defs")
+                label_to_id[doc_type] = None
+                continue
+
             insert_q = text("""
                 INSERT INTO llm_label_defs (type, subtype, nature, created_at, updated_at, datatype)
                 VALUES (:type, :subtype, :nature, :created_at, :updated_at, NULL)
@@ -227,7 +233,7 @@ def run(
 
     # Step 2 – ensure label defs exist (inserts only missing ones)
     document_types = df["document_type"].unique().tolist()
-    label_to_id = ensure_label_defs(db, document_types)
+    label_to_id = ensure_label_defs(db, document_types, dry_run=dry_run)
     logger.info(f"Label mapping: {label_to_id}")
 
     # Step 3 – filter out already-labeled tickets
