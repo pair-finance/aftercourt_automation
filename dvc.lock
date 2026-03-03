@@ -144,7 +144,7 @@ stages:
     outs:
     - path: models/vectorizers/vectorizer.dill
       hash: md5
-      md5: 88ee16e190c8fe503341924613231566
+      md5: 0fc7faebbd8000be4e42deafe57d08e1
       size: 74616067
   featurize:
     cmd: python src/featurazition/featurazition.py data/prepared/ladung 
@@ -160,7 +160,7 @@ stages:
       size: 41028797
     - path: models/vectorizers/vectorizer.dill
       hash: md5
-      md5: 88ee16e190c8fe503341924613231566
+      md5: 0fc7faebbd8000be4e42deafe57d08e1
       size: 74616067
     - path: src/featurazition/featurazition.py
       hash: md5
