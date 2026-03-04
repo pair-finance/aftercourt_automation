@@ -1,5 +1,6 @@
 # Custom ignores 
 assets/pdfs
+assets/data_analysis_plots
 egvp_full_attachment_data_checkpoints/
 .DS_Store
 # MLflow local tracking store
