@@ -15,7 +15,6 @@ def generate_uuid(text: str, purpose: str) -> str:
     Returns:
         str: A UUID string generated from the input text and purpose.
     """
-    text = text[:100]  # Limit the text to the first 100 characters
     signature = f"{purpose}:{text}"
     # Use nil UUID as namespace (compatible with all Python versions)
     nil_namespace = uuid.UUID('00000000-0000-0000-0000-000000000000')
@@ -23,7 +22,6 @@ def generate_uuid(text: str, purpose: str) -> str:
 
 
 def generate_hash_from_text(text: str) -> str:
-    text = text[:100]  # Limit the text to the first 100 characters
     """Generate SHA-256 hash from text string"""
     return hashlib.sha256(text.encode('utf-8')).hexdigest()
 
