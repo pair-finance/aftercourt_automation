@@ -17,6 +17,7 @@ text from documents stored in S3. This module provides:
 import awswrangler.secretsmanager as sm
 import boto3
 import logging
+import os
 from typing import Dict, List
 
 logger = logging.getLogger(__name__)
@@ -399,3 +400,39 @@ def parse_pdfs_with_textract(object_keys: List[str]) -> List[str]:
     raw_text_outputs = get_texts_from_textract_outputs(textract_outputs)
     new_texts_dict = {obj_key: text for obj_key, text in zip(object_keys, raw_text_outputs)}
     return new_texts_dict
+
+
+def parse_local_pdfs_with_textract(
+    local_pdf_paths: List[str],
+    s3_object_key_base: str,
+    s3_bucket_name: str = ModelConfig.ocr_s3_bucket,
+) -> Dict[str, str]:
+    """Parse local PDF files using AWS Textract and return object key to text mapping.
+
+    Uploads each local PDF to S3 under the given prefix, then runs the Textract
+    pipeline to extract text from each document.
+
+    Args:
+        local_pdf_paths: List of absolute paths to local PDF files.
+        s3_object_key_base: S3 key prefix under which files will be uploaded
+            (e.g. "data/pfub_invoices/").
+        s3_bucket_name: Target S3 bucket. Defaults to ModelConfig.ocr_s3_bucket.
+
+    Returns:
+        Dict mapping each S3 object key to the extracted text string.
+    """
+    session = boto3.Session(
+        region_name="eu-central-1",
+        profile_name="739275445236_DataScienceUser",
+    )
+    s3_client = session.client("s3")
+
+    object_keys = []
+    for pdf_path in local_pdf_paths:
+        file_name = os.path.basename(pdf_path)
+        object_key = os.path.join(s3_object_key_base, file_name)
+        logger.info("Uploading '%s' to s3://%s/%s", pdf_path, s3_bucket_name, object_key)
+        s3_client.upload_file(pdf_path, s3_bucket_name, object_key)
+        object_keys.append(object_key)
+
+    return parse_pdfs_with_textract(object_keys)
