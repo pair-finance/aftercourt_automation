@@ -35,11 +35,16 @@ NEVER set is_pfub=true based only on weak signals, such as:
 - "PfÜB" mentioned without a granting/issuance verb
 - mentions that a PfÜB exists elsewhere without issuance/granting text
 
-SPECIAL RULE (common false positive):
+SPECIAL RULE (common false positives):
 - If the text only says that a PfÜB is being transmitted/served (e.g. "wird ... zugestellt")
   but does NOT also show that the court has granted/issued it (A2), then is_pfub = false.
 - Filenames such as "pfaendung_erlassen.pdf" or "erlass_pfub.pdf" or "erlass_pfub.xml" must NOT be used as evidence. 
-  They are not sufficient to determine whether a document is a PfÜB-Erlass. Ignore all filenames entirely. 
+  They are not sufficient to determine whether a document is a PfÜB-Erlass. Ignore all filenames entirely.
+- Some documents mention PfÜB but are NOT an issued/granted PfÜB. Set is_pfub=false if the text contains at least two of the following sentences (or clear OCR-near variants of the same full sentence/label line):
+  - "Aktenzeichen des Schuldnervertreters"
+  - "Aktenzeichen des Gläubigervertreters"
+  - "Zusammenrechnung von Arbeitseinkommen und Sozialleistungen"
+  - "Verrechnungsscheck für Gerichtskosten"
 
 Return false if it is not about a PfüB order (e.g., other enforcement letters, reminders, generic correspondence) even if it mentions enforcement in general.
 
