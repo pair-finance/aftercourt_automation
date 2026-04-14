@@ -6,6 +6,11 @@ from typing import List
 _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
+
+# Add intent_recognition/ so internal "from src.*" imports resolve correctly
+_intent_recog_root = os.path.join(_project_root, "intent_recognition")
+if _intent_recog_root not in sys.path:
+    sys.path.insert(0, _intent_recog_root)
     
 
 from intent_recognition.src.services.attachment_processing.base_input_processor import AfterCourtAttachmentPreprocessor
