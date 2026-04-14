@@ -8,9 +8,9 @@ import json
 st.set_page_config(layout="wide", page_title="Wrong Predictions Review")
 
 PDF_DIR = "/Users/melih.gorgulu/Desktop/Projects/aftercourt_automation/assets/pdfs/tmp/WRONG_PREDICTIONS_CHECK_REASONING"
-DATA_PATH = "/Users/melih.gorgulu/Desktop/Projects/aftercourt_automation/notebooks/analysis_data/final_preds_pfub_invoice_new_propmt.csv"
+DATA_PATH = "/Users/melih.gorgulu/Desktop/Projects/aftercourt_automation/notebooks/analysis_data/llm_predictions/final_preds_LLM_pfub_and_invoice_25-03-2026_prompt_v2.csv"
 
-WRONG_IDS = [53752407, 50426386, 52426004, 51179979, 52249553, 52426088, 51469512, 52885140, 52885159, 53790961, 53408148, 53015376, 53408147, 52885159, 50426389]
+WRONG_IDS = [54079706, 50453801, 53752403, 50426386, 53413215, 50763396, 53752407, 50426389, 50396793]
 
 
 def extract_first_json(text):
