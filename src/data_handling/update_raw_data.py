@@ -8,8 +8,10 @@ REQUIRED_COLUMNS = ['text', 'document_type', 'is_pfub', 'is_ladung']
 
 def validate_required_columns(data: pd.DataFrame) -> None:
     """Validate that required columns have no missing values."""
+    print(f"Validating required columns: {REQUIRED_COLUMNS}")
     missing = data[REQUIRED_COLUMNS].isna().sum()
     assert missing.sum() == 0, f"There is empty entry for required fields in new data. Check fields: {REQUIRED_COLUMNS}"
+    print("All required columns validated successfully.")
 
 
 def _fill_or_create_uuid_column(data: pd.DataFrame, column: str, purpose: str) -> pd.DataFrame:
@@ -25,6 +27,7 @@ def _fill_or_create_uuid_column(data: pd.DataFrame, column: str, purpose: str) -
 
 def fill_generated_columns(data: pd.DataFrame) -> pd.DataFrame:
     """Fill ticket_uuid, attachment_id, textract_job_id, and textract_s3_link."""
+    print(f"Filling generated columns for {len(data)} rows.")
     data = _fill_or_create_uuid_column(data, 'ticket_uuid', 'ticket_uuid')
     data = _fill_or_create_uuid_column(data, 'attachment_id', 'attachment_id')
 
@@ -52,6 +55,7 @@ def fill_generated_columns(data: pd.DataFrame) -> pd.DataFrame:
 
 def validate_dtypes(raw_data: pd.DataFrame, new_data: pd.DataFrame) -> None:
     """Assert that columns shared between new_data and raw_data have matching dtypes."""
+    print("Validating dtypes between raw data and new data.")
     shared_cols = [col for col in new_data.columns if col in raw_data.columns]
     mismatches = {
         col: {"raw_data": str(raw_data[col].dtype), "new_data": str(new_data[col].dtype)}
@@ -67,26 +71,38 @@ def validate_dtypes(raw_data: pd.DataFrame, new_data: pd.DataFrame) -> None:
 def deduplicate_against_existing(raw_data: pd.DataFrame, new_data: pd.DataFrame) -> pd.DataFrame:
     """Remove rows from new_data whose ticket_uuid already exists in raw_data."""
     existing_uuids = set(raw_data['ticket_uuid'])
-    return new_data[~new_data['ticket_uuid'].isin(existing_uuids)]
+    deduplicated = new_data[~new_data['ticket_uuid'].isin(existing_uuids)]
+    n_duplicates = len(new_data) - len(deduplicated)
+    if n_duplicates > 0:
+        print(f"WARNING: Removed {n_duplicates} duplicate rows already present in raw data.")
+    else:
+        print("No duplicates found.")
+    return deduplicated
 
 
 def update_raw_data(raw_data: pd.DataFrame, new_data: pd.DataFrame) -> pd.DataFrame:
     """Full pipeline: validate, fill columns, deduplicate, and concatenate."""
+    print(f"Starting raw data update. Raw data: {len(raw_data)} rows, New data: {len(new_data)} rows.")
     validate_required_columns(new_data)
     new_data = fill_generated_columns(new_data)
     validate_dtypes(raw_data, new_data)
     new_data = deduplicate_against_existing(raw_data, new_data)
-    return pd.concat([raw_data, new_data], ignore_index=True)
+    updated = pd.concat([raw_data, new_data], ignore_index=True)
+    print(f"Raw data update complete. Total rows: {len(updated)} (added {len(new_data)}).")
+    return updated
 
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser("Update raw data with new data")
     parser.add_argument("--raw-data-path", default=RAW_DATA_PATH, help="Path to final_raw_data.csv")
     parser.add_argument("--new-data-path", help="Path to data to be added")
     args = parser.parse_args()
 
+    print(f"Reading raw data from {args.raw_data_path}")
     raw_data = pd.read_csv(args.raw_data_path)
+    print(f"Reading new data from {args.new_data_path}")
     data_to_add = pd.read_csv(args.new_data_path)
 
     updated_raw_data = update_raw_data(raw_data, data_to_add)
