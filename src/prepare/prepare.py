@@ -17,7 +17,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("prepare_ladung")
+logger = logging.getLogger("STAGE: PREPARE")
 
 from intent_recognition.src.services.attachment_processing.base_input_processor import AfterCourtAttachmentPreprocessor
 from intent_recognition.src.domain.base.blueprints import AfterCourtPreprocessingBlueprint
@@ -25,14 +25,14 @@ from intent_recognition.src.domain.base.blueprints import AfterCourtPreprocessin
 
 
 if __name__ == "__main__":
-    params = yaml.safe_load(open("params.yaml"))["prepare"]
-    target = params["target"]
-    target_params = params[target]
-
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 3:
         sys.stderr.write("Arguments error. Usage:\n")
-        sys.stderr.write("\tpython src/prepare/prepare.py data-file\n")
+        sys.stderr.write("\tpython src/prepare/prepare.py data-file target\n")
         sys.exit(1)
+
+    params = yaml.safe_load(open("params.yaml"))["prepare"]
+    target = sys.argv[2]          # e.g. "ladung" or "pfub" — passed by DVC foreach
+    target_params = params[target]
 
     # Initialize preprocessing configuration and processor
     preprocess_params = target_params["aftercourt_preprocessing"]

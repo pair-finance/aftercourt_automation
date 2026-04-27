@@ -21,16 +21,15 @@ logger = logging.getLogger("train")
 
 
 if __name__ == "__main__":
-    all_params = yaml.safe_load(open("params.yaml"))
-    prepare_params = all_params["prepare"]
-    train_params = all_params["train"]
-    target = prepare_params["target"]
-    clf_params = train_params["classifier"]
-
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         sys.stderr.write("Arguments error. Usage:\n")
-        sys.stderr.write("\tpython src/training/train.py featurized-dir output-model-path\n")
+        sys.stderr.write("\tpython src/training/train.py featurized-dir output-model-path target\n")
         sys.exit(1)
+
+    all_params = yaml.safe_load(open("params.yaml"))
+    train_params = all_params["train"]
+    target = sys.argv[3]          # e.g. "ladung" or "pfub" — passed by DVC foreach
+    clf_params = train_params[target]["classifier"]
 
     featurized_dir = sys.argv[1]
     output_model_path = sys.argv[2]
@@ -51,10 +50,10 @@ if __name__ == "__main__":
 
     # ── MLflow: initialise & open run ──────────────────────────────
     init_mlflow()
-    with get_or_create_run("train", run_name=f"train-{target}"):
+    with get_or_create_run("train", target=target, run_name=f"train-{target}"):
         # Log all pipeline parameters (only the first stage to open the run
         # should log the full param set; subsequent stages add their own).
-        log_params_flat(prepare_params, prefix="prepare")
+        log_params_flat(all_params.get("prepare", {}), prefix="prepare")
         log_params_flat(all_params.get("fit_vectorizer", {}), prefix="fit_vectorizer")
         log_params_flat(train_params, prefix="train")
         log_params_flat(all_params.get("evaluate", {}), prefix="evaluate")
