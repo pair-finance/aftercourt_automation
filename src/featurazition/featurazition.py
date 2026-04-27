@@ -19,7 +19,7 @@ import pandas as pd
 import scipy.sparse as sp
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("featurize_ladung")
+logger = logging.getLogger("STAGE: FEATURAZITION TF-IDF")
 
 
 def featurize_and_save(input_path: str, output_features_path: str, output_labels_path: str, vectorizer, target_col: str):
@@ -39,15 +39,15 @@ def featurize_and_save(input_path: str, output_features_path: str, output_labels
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 5:
+        sys.stderr.write("Arguments error. Usage:\n")
+        sys.stderr.write("\tpython src/featurazition/featurazition.py input-dir vectorizer-path output-dir target\n")
+        sys.exit(1)
+
     all_params = yaml.safe_load(open("params.yaml"))
     prepare_params = all_params["prepare"]
-    target = prepare_params["target"]
+    target = sys.argv[4]          # e.g. "ladung" or "pfub" — passed by DVC foreach
     target_col = prepare_params[target]["target_col"]
-
-    if len(sys.argv) != 4:
-        sys.stderr.write("Arguments error. Usage:\n")
-        sys.stderr.write("\tpython src/featurazition/featurazition.py input-dir vectorizer-path output-dir\n")
-        sys.exit(1)
 
     in_dir = sys.argv[1]
     vectorizer_path = sys.argv[2]

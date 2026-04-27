@@ -1,9 +1,8 @@
 mlflow:
   tracking_uri: mlruns  # local directory; set to a remote URI (e.g. http://mlflow-server:5000) for shared tracking
-  experiment_name: probability_threshold_0.5
+  experiment_name: retrain-ladung-and-pfub-classifiers-27-04-2026
 
 prepare:
-  target: ladung
   split: 0.20
   seed: 42
   ladung:
@@ -37,9 +36,17 @@ fit_vectorizer:
 
 train:
   seed: 42
-  classifier:
-    n_estimators: 100
-    random_state: 42
+  ladung:
+    classifier:
+      n_estimators: 100
+      random_state: 42
+  pfub:
+    classifier:
+      n_estimators: 100
+      random_state: 42
 
 evaluate:
-  threshold: 0.5
+  ladung:
+    threshold: 0.95
+  pfub:
+    threshold: 0.5

@@ -32,22 +32,23 @@ import mlflow
 from src.mlflow_utils import init_mlflow, get_or_create_run, finish_pipeline_run
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("evaluate")
+logger = logging.getLogger("STAGE: EVALUATE")
 
 
 if __name__ == "__main__":
     all_params = yaml.safe_load(open("params.yaml"))
     eval_params = all_params["evaluate"]
-    threshold = eval_params["threshold"]
 
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 5:
         sys.stderr.write("Arguments error. Usage:\n")
-        sys.stderr.write("\tpython src/eval.py model-path featurized-dir output-dir\n")
+        sys.stderr.write("\tpython src/eval/eval.py model-path featurized-dir output-dir target\n")
         sys.exit(1)
 
     model_path = sys.argv[1]
     featurized_dir = sys.argv[2]
     output_dir = sys.argv[3]
+    target = sys.argv[4]          # e.g. "ladung" or "pfub" — passed by DVC foreach
+    threshold = eval_params[target]["threshold"]
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -120,9 +121,8 @@ if __name__ == "__main__":
     logger.info(f"Saved predictions to {preds_path}")
 
     # ── MLflow: log evaluation metrics, artifacts & plots ──────────
-    target = all_params["prepare"]["target"]
     init_mlflow()
-    with get_or_create_run("evaluate", run_name=f"{target}-{threshold}"):
+    with get_or_create_run("evaluate", target=target, run_name=f"{target}-{threshold}"):
         # Scalar metrics
         mlflow.log_metrics({
             "accuracy": accuracy,
@@ -170,10 +170,42 @@ if __name__ == "__main__":
         plt.close(pr_display.figure_)
         mlflow.log_artifact(pr_fig_path, artifact_path="evaluation/plots")
 
+        # Predicted probability distribution (overlaid by true class)
+        probs_pos = y_pred_probs[y_test == 1]
+        probs_neg = y_pred_probs[y_test == 0]
+        fig, ax = plt.subplots(figsize=(8, 5))
+        bins = np.linspace(0.0, 1.0, 51)
+        ax.hist(probs_neg, bins=bins, alpha=0.6, label=f"y_true=0 (n={len(probs_neg)})", color="tab:blue")
+        ax.hist(probs_pos, bins=bins, alpha=0.6, label=f"y_true=1 (n={len(probs_pos)})", color="tab:orange")
+        ax.axvline(threshold, color="red", linestyle="--", linewidth=1, label=f"threshold={threshold}")
+        ax.set_xlabel("Predicted probability (positive class)")
+        ax.set_ylabel("Count")
+        ax.set_title(f"Predicted Probability Distribution — {target}")
+        ax.legend()
+        prob_dist_path = os.path.join(plots_dir, "probability_distribution.png")
+        fig.savefig(prob_dist_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        mlflow.log_artifact(prob_dist_path, artifact_path="evaluation/plots")
+
+        # Same plot, log-scaled y-axis (helps when one class dominates)
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.hist(probs_neg, bins=bins, alpha=0.6, label=f"y_true=0 (n={len(probs_neg)})", color="tab:blue")
+        ax.hist(probs_pos, bins=bins, alpha=0.6, label=f"y_true=1 (n={len(probs_pos)})", color="tab:orange")
+        ax.axvline(threshold, color="red", linestyle="--", linewidth=1, label=f"threshold={threshold}")
+        ax.set_yscale("log")
+        ax.set_xlabel("Predicted probability (positive class)")
+        ax.set_ylabel("Count (log scale)")
+        ax.set_title(f"Predicted Probability Distribution (log) — {target}")
+        ax.legend()
+        prob_dist_log_path = os.path.join(plots_dir, "probability_distribution_log.png")
+        fig.savefig(prob_dist_log_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        mlflow.log_artifact(prob_dist_log_path, artifact_path="evaluation/plots")
+
         logger.info("Logged metrics, artifacts & plots to MLflow")
 
     # The evaluate stage is the last stage — clean up the active run marker
     # so the next `dvc repro` creates a fresh MLflow run.
-    finish_pipeline_run()
+    finish_pipeline_run(target)
 
     logger.info("Done!")
