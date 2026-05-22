@@ -1,0 +1,6 @@
+outs:
+- md5: 73297a9b2820d57f3fbe2c1ffe7fdba7
+  size: 7756082
+  hash: md5
+  path: 
+    prod_data_invoice_detection_test_sample_21_05_2026_v1_qwen32B_corrected_viaslug_and_protokol.csv

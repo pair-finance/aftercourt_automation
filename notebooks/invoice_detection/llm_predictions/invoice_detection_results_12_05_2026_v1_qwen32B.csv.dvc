@@ -1,0 +1,5 @@
+outs:
+- md5: 8fb45992ff932d7ca5210d7da4935f72
+  size: 2702516
+  hash: md5
+  path: invoice_detection_results_12_05_2026_v1_qwen32B.csv
