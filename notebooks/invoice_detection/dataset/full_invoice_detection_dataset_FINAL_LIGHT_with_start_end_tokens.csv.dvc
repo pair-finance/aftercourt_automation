@@ -1,0 +1,5 @@
+outs:
+- md5: 0493934903386de4a68fe5d69cc80bfd
+  size: 3309329
+  hash: md5
+  path: full_invoice_detection_dataset_FINAL_LIGHT_with_start_end_tokens.csv
