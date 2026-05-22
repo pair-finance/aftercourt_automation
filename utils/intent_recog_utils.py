@@ -55,9 +55,15 @@ class CustomTokenizer(ClassificationSpacyLemmaTokenizer):
 tokenizer = CustomTokenizer()
 
 
-def apply_text_cleaning(text: str) -> str:
-    """Apply text cleaning to the extracted text."""
-    return aftercourt_attachment_processor._process(text)
+def apply_text_cleaning(text: str, config: AfterCourtPreprocessingBlueprint = None) -> str:
+    """Apply text cleaning to the extracted text.
+    
+    Pass a custom ``config`` to override the default preprocessing settings.
+    """
+    if config is None:
+        return aftercourt_attachment_processor._process(text)
+    processor = AfterCourtAttachmentPreprocessor("custom_processor", config)
+    return processor._process(text)
 
 def apply_replace_with_tags(text: str) -> str:
     """Apply replace with tags to the extracted text."""
