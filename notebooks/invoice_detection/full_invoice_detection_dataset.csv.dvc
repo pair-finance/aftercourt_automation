@@ -1,5 +1,0 @@
-outs:
-- md5: dd2643300a14ce99be26f813ebcbfdb9
-  size: 46183328
-  hash: md5
-  path: full_invoice_detection_dataset.csv

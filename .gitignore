@@ -1,4 +1,5 @@
 # Custom ignores 
+assets
 assets/pdfs
 assets/data_analysis_plots
 egvp_full_attachment_data_checkpoints/
