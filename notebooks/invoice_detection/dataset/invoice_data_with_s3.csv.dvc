@@ -1,0 +1,5 @@
+outs:
+- md5: 90a250a2ea1e601bd018c0a66ce65c39
+  size: 849682664
+  hash: md5
+  path: invoice_data_with_s3.csv
