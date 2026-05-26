@@ -6,6 +6,7 @@ egvp_full_attachment_data_checkpoints/
 .DS_Store
 # MLflow local tracking store
 mlruns/
+notebooks/invoice_detection/dataset/invoice_data_with_s3.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
