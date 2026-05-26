@@ -195,6 +195,47 @@ from typing import List, Dict, Any
 import time
 
 
+def get_texts_with_page_markers_from_textract_outputs(
+    textract_outputs: List[Dict[str, Any]],
+) -> List[str]:
+    """Convert raw Textract block lists into plain text with page markers.
+
+    Like :func:`get_texts_from_textract_outputs`, but preserves page
+    boundaries by prefixing each page's text with a ``<page_N>`` marker.
+
+    Args:
+        textract_outputs (List[Dict[str, Any] | None]): A list where each
+            element is either a list of Textract block dicts (as returned by
+            :meth:`TextractClient.get_job_results`) or ``None``.
+
+    Returns:
+        List[str]: A list of extracted text strings, one per input document.
+        Each page within a document is preceded by a ``<page_N>`` marker on
+        its own line. Failed or empty documents produce an empty string.
+    """
+    from collections import defaultdict
+
+    raw_text_outputs: List[str] = []
+    for output in textract_outputs:
+        if output is None:
+            raw_text_outputs.append("")
+            continue
+
+        pages_to_lines: Dict[int, List[str]] = defaultdict(list)
+        for block in output:
+            if block["BlockType"] == "LINE":
+                page_number = int(block.get("Page", 1))
+                pages_to_lines[page_number].append(block["Text"])
+
+        parts = [
+            f"<page_{page}>\n" + "\n".join(pages_to_lines[page])
+            for page in sorted(pages_to_lines)
+        ]
+        raw_text_outputs.append("\n".join(parts))
+
+    return raw_text_outputs
+
+
 def get_texts_from_textract_outputs(textract_outputs: List[Dict[str, Any]]) -> List[str]:
     """Convert raw Textract block lists into plain text strings.
 
@@ -401,11 +442,32 @@ def parse_pdfs_with_textract(object_keys: List[str]) -> List[str]:
     new_texts_dict = {obj_key: text for obj_key, text in zip(object_keys, raw_text_outputs)}
     return new_texts_dict
 
+def parse_pdfs_with_pagemarkers_with_textract(object_keys: List[str]) -> List[str]:
+    """High-level entry point: extract text from S3 documents using Textract.
+
+    Runs the full Textract pipeline and returns a mapping from each S3 object
+    key to its extracted plain-text content.
+
+    Args:
+        object_keys (List[str]): S3 object keys of the PDF (or image) files to
+            process.
+
+    Returns:
+        Dict[str, str]: A dictionary mapping each object key to its extracted
+        text string. Documents that could not be processed map to an empty
+        string ``""``.
+    """
+    textract_outputs = aws_textract_pipeline(object_keys, max_workers=2)
+    raw_text_outputs_w_pagemarkers = get_texts_with_page_markers_from_textract_outputs(textract_outputs)
+    new_texts_dict = {obj_key: text for obj_key, text in zip(object_keys, raw_text_outputs_w_pagemarkers)}
+    return new_texts_dict
+
 
 def parse_local_pdfs_with_textract(
     local_pdf_paths: List[str],
     s3_object_key_base: str,
     s3_bucket_name: str = ModelConfig.ocr_s3_bucket,
+    use_page_markers: bool = False,
 ) -> Dict[str, str]:
     """Parse local PDF files using AWS Textract and return object key to text mapping.
 
@@ -435,4 +497,4 @@ def parse_local_pdfs_with_textract(
         s3_client.upload_file(pdf_path, s3_bucket_name, object_key)
         object_keys.append(object_key)
 
-    return parse_pdfs_with_textract(object_keys)
+    return parse_pdfs_with_textract(object_keys) if not use_page_markers else parse_pdfs_with_pagemarkers_with_textract(object_keys)
