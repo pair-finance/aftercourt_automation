@@ -455,3 +455,57 @@ def download_pdf_from_s3(s3, bucket_name: str, object_key: str, download_dir: st
     except Exception as e:
         print(f"❌ Error downloading PDF: {str(e)}")
         raise
+
+
+def pivot_attachment_predictions(preds: pd.DataFrame) -> pd.DataFrame:
+    """Reshape long-format attachment predictions into a wide dataframe with one row per attachment_id.
+
+    Each row becomes ``<short_model>_<subtype>`` columns (e.g. ``ladung_class_prob``,
+    ``ladung_slug``, ``pfub_debtor_name``). Probability columns ending in
+    ``_class_prob`` are coerced to floats (missing -> -1); remaining string
+    columns get ``'none'`` for missing values. Single-quote wrappers around
+    stored values are stripped.
+
+    Parameters
+    ----------
+    preds : pd.DataFrame
+        Long-format predictions with columns ``attachment_id``, ``model_name``,
+        ``subtype``, ``value``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Wide-format predictions with one row per ``attachment_id``.
+    """
+    preds = preds.copy()
+
+    # strip stray single-quotes that wrap the stored values
+    preds['value'] = preds['value'].astype(str).str.replace("'", "", regex=False)
+
+    # build wide column name: "<short_model>_<subtype>"
+    preds['col'] = (
+        preds['model_name'].str.replace('aftercourt_classification_', '', regex=False)
+        + '_' + preds['subtype']
+    )
+
+    wide = (
+        preds.pivot_table(
+            index='attachment_id',
+            columns='col',
+            values='value',
+            aggfunc='first',  # in case of duplicate (attachment_id, col)
+        )
+        .reset_index()
+    )
+    wide.columns.name = None
+
+    # cast probability columns to float and fill missing
+    prob_cols = [c for c in wide.columns if c.endswith('_class_prob')]
+    for c in prob_cols:
+        wide[c] = pd.to_numeric(wide[c], errors='coerce').fillna(-1)
+
+    # fill remaining (string) columns with 'none'
+    str_cols = [c for c in wide.columns if c not in prob_cols + ['attachment_id']]
+    wide[str_cols] = wide[str_cols].fillna('none')
+
+    return wide
