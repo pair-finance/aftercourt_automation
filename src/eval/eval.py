@@ -18,6 +18,7 @@ from sklearn.metrics import (
     recall_score,
     f1_score,
     roc_auc_score,
+    average_precision_score,
     confusion_matrix,
     classification_report,
     RocCurveDisplay,
@@ -80,7 +81,12 @@ if __name__ == "__main__":
     recall = recall_score(y_test, y_pred, zero_division=0)
     f1 = f1_score(y_test, y_pred, zero_division=0)
     roc_auc = roc_auc_score(y_test, y_pred_probs)
+    pr_auc = average_precision_score(y_test, y_pred_probs)
     cm = confusion_matrix(y_test, y_pred).tolist()
+    cls_report_str = classification_report(y_test, y_pred, zero_division=0, digits=4)
+    cls_report_dict = classification_report(
+        y_test, y_pred, zero_division=0, output_dict=True
+    )
 
     metrics = {
         "accuracy": accuracy,
@@ -88,6 +94,7 @@ if __name__ == "__main__":
         "recall": recall,
         "f1_score": f1,
         "roc_auc": roc_auc,
+        "pr_auc": pr_auc,
         "threshold": threshold,
         "confusion_matrix": {
             "tn": cm[0][0],
@@ -95,6 +102,7 @@ if __name__ == "__main__":
             "fn": cm[1][0],
             "tp": cm[1][1],
         },
+        "classification_report": cls_report_dict,
     }
 
     logger.info(f"Accuracy:  {accuracy:.4f}")
@@ -102,13 +110,21 @@ if __name__ == "__main__":
     logger.info(f"Recall:    {recall:.4f}")
     logger.info(f"F1 Score:  {f1:.4f}")
     logger.info(f"ROC-AUC:   {roc_auc:.4f}")
+    logger.info(f"PR-AUC:    {pr_auc:.4f}")
     logger.info(f"Confusion Matrix: {cm}")
+    logger.info(f"Classification report:\n{cls_report_str}")
 
     # Save metrics JSON (kept for DVC compatibility)
     metrics_path = os.path.join(output_dir, "metrics.json")
     with open(metrics_path, "w") as f:
         json.dump(metrics, f, indent=2)
     logger.info(f"Saved metrics to {metrics_path}")
+
+    # Save human-readable classification report alongside JSON metrics
+    cls_report_path = os.path.join(output_dir, "classification_report.txt")
+    with open(cls_report_path, "w") as f:
+        f.write(cls_report_str)
+    logger.info(f"Saved classification report to {cls_report_path}")
 
     # Save prediction probabilities for DVC plots (e.g. ROC curve)
     preds_path = os.path.join(output_dir, "predictions.json")
@@ -130,6 +146,7 @@ if __name__ == "__main__":
             "recall": recall,
             "f1_score": f1,
             "roc_auc": roc_auc,
+            "pr_auc": pr_auc,
             "threshold": threshold,
             "test_samples": int(X_test.shape[0]),
             "confusion_tn": cm[0][0],
@@ -141,6 +158,7 @@ if __name__ == "__main__":
         # Log the JSON artefacts
         mlflow.log_artifact(metrics_path, artifact_path="evaluation")
         mlflow.log_artifact(preds_path, artifact_path="evaluation")
+        mlflow.log_artifact(cls_report_path, artifact_path="evaluation")
 
         # ── Generate & log plots ──────────────────────────────────
         plots_dir = os.path.join(output_dir, "plots")

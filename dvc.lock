@@ -510,3 +510,171 @@ stages:
       hash: md5
       md5: 9ff5144a0bab15956783790fc43ebd3b
       size: 54389
+  prepare@vermogensverzeichnis:
+    cmd: python src/prepare/prepare.py data/raw/final_raw_data.csv 
+      vermogensverzeichnis
+    deps:
+    - path: data/raw/final_raw_data.csv
+      hash: md5
+      md5: a4d5dbd31b3f87b7a4453e2fc1757cca
+      size: 35643737
+    - path: src/prepare/prepare.py
+      hash: md5
+      md5: 2780505a6fc94252de245f87a3c29304
+      size: 3564
+    params:
+      params.yaml:
+        prepare.seed: 42
+        prepare.split: 0.2
+        prepare.vermogensverzeichnis:
+          aftercourt_preprocessing:
+            normalize_whitespace: true
+            remove_short_lines: true
+            short_line_threshold: 3
+            remove_html_tags: true
+            lowercase: true
+          target_col: is_va
+    outs:
+    - path: data/prepared/vermogensverzeichnis/test.csv
+      hash: md5
+      md5: b84721a038d8ff67a837fbde6e472fa4
+      size: 10340653
+    - path: data/prepared/vermogensverzeichnis/train.csv
+      hash: md5
+      md5: dc06b45c9c887a1189ad5dc73b8c8608
+      size: 42617910
+  fit_vectorizer@vermogensverzeichnis:
+    cmd: python src/featurazition/fit_vectorizer.py 
+      data/prepared/vermogensverzeichnis/train.csv 
+      models/vectorizers/vermogensverzeichnis_vectorizer.dill 
+      vermogensverzeichnis
+    deps:
+    - path: data/prepared/vermogensverzeichnis/train.csv
+      hash: md5
+      md5: dc06b45c9c887a1189ad5dc73b8c8608
+      size: 42617910
+    - path: src/featurazition/fit_vectorizer.py
+      hash: md5
+      md5: c10353bf78e20e154718c32e0dbd3b48
+      size: 2280
+    params:
+      params.yaml:
+        fit_vectorizer.seed: 1
+        fit_vectorizer.vermogensverzeichnis.vectorizer:
+          max_features: 200
+          ngram_range_min: 1
+          ngram_range_max: 1
+          norm: l2
+          min_df: 2
+          max_df: 0.95
+          lowercase: false
+    outs:
+    - path: models/vectorizers/vermogensverzeichnis_vectorizer.dill
+      hash: md5
+      md5: da303d83bf80243700af479344b3f525
+      size: 74664292
+  featurize@vermogensverzeichnis:
+    cmd: python src/featurazition/featurazition.py 
+      data/prepared/vermogensverzeichnis 
+      models/vectorizers/vermogensverzeichnis_vectorizer.dill 
+      data/featurized/vermogensverzeichnis vermogensverzeichnis
+    deps:
+    - path: data/prepared/vermogensverzeichnis/test.csv
+      hash: md5
+      md5: b84721a038d8ff67a837fbde6e472fa4
+      size: 10340653
+    - path: data/prepared/vermogensverzeichnis/train.csv
+      hash: md5
+      md5: dc06b45c9c887a1189ad5dc73b8c8608
+      size: 42617910
+    - path: models/vectorizers/vermogensverzeichnis_vectorizer.dill
+      hash: md5
+      md5: da303d83bf80243700af479344b3f525
+      size: 74664292
+    - path: src/featurazition/featurazition.py
+      hash: md5
+      md5: eb3cb54ac8b26d83d75591909d2081c0
+      size: 2722
+    params:
+      params.yaml:
+        prepare.vermogensverzeichnis.target_col: is_va
+    outs:
+    - path: data/featurized/vermogensverzeichnis/test_features.npz
+      hash: md5
+      md5: 4a31b308014d94bbd73d667dba438874
+      size: 511980
+    - path: data/featurized/vermogensverzeichnis/test_labels.npy
+      hash: md5
+      md5: db70de457358b06772886adea6b49d78
+      size: 1246
+    - path: data/featurized/vermogensverzeichnis/train_features.npz
+      hash: md5
+      md5: 9f622c3e04f4f24ff8f1fb7361748dac
+      size: 2060670
+    - path: data/featurized/vermogensverzeichnis/train_labels.npy
+      hash: md5
+      md5: bcfc6ede728e2d58a7bdb30bc0b4b9ab
+      size: 4596
+  train@vermogensverzeichnis:
+    cmd: python src/training/train.py data/featurized/vermogensverzeichnis 
+      models/classification/vermogensverzeichnis_rf_classifier.dill 
+      vermogensverzeichnis
+    deps:
+    - path: data/featurized/vermogensverzeichnis/train_features.npz
+      hash: md5
+      md5: 9f622c3e04f4f24ff8f1fb7361748dac
+      size: 2060670
+    - path: data/featurized/vermogensverzeichnis/train_labels.npy
+      hash: md5
+      md5: bcfc6ede728e2d58a7bdb30bc0b4b9ab
+      size: 4596
+    - path: src/training/train.py
+      hash: md5
+      md5: 5f19867b9a10764a945c325df0b5181d
+      size: 3507
+    params:
+      params.yaml:
+        train.seed: 42
+        train.vermogensverzeichnis.classifier:
+          n_estimators: 100
+          random_state: 42
+          class_weight: balanced
+    outs:
+    - path: models/classification/vermogensverzeichnis_rf_classifier.dill
+      hash: md5
+      md5: 2d45c7edcd86e01bc1cea2c91bca114b
+      size: 125552
+  evaluate@vermogensverzeichnis:
+    cmd: python src/eval/eval.py 
+      models/classification/vermogensverzeichnis_rf_classifier.dill 
+      data/featurized/vermogensverzeichnis data/evaluation/vermogensverzeichnis 
+      vermogensverzeichnis
+    deps:
+    - path: data/featurized/vermogensverzeichnis/test_features.npz
+      hash: md5
+      md5: 4a31b308014d94bbd73d667dba438874
+      size: 511980
+    - path: data/featurized/vermogensverzeichnis/test_labels.npy
+      hash: md5
+      md5: db70de457358b06772886adea6b49d78
+      size: 1246
+    - path: models/classification/vermogensverzeichnis_rf_classifier.dill
+      hash: md5
+      md5: 2d45c7edcd86e01bc1cea2c91bca114b
+      size: 125552
+    - path: src/eval/eval.py
+      hash: md5
+      md5: c430259dbab8bd4b99b4bd646b11ed60
+      size: 9311
+    params:
+      params.yaml:
+        evaluate.vermogensverzeichnis.threshold: 0.5
+    outs:
+    - path: data/evaluation/vermogensverzeichnis/metrics.json
+      hash: md5
+      md5: 3a2c6d46494ed5e6a04663446d96ec9d
+      size: 734
+    - path: data/evaluation/vermogensverzeichnis/predictions.json
+      hash: md5
+      md5: 34c3e7d9ffb9c9b0643382133f511a38
+      size: 54813

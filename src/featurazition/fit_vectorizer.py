@@ -19,21 +19,23 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from intent_recognition.src.services.models.aftercourt_tokenizer import ClassificationSpacyLemmaTokenizer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("fit_vectorizer_ladung")
 
 
 if __name__ == "__main__":
-    params = yaml.safe_load(open("params.yaml"))["fit_vectorizer"]
-    seed = params["seed"]
-    vec_params = params["vectorizer"]
-
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         sys.stderr.write("Arguments error. Usage:\n")
-        sys.stderr.write("\tpython src/featurazition/fit_vectorizer.py train-csv output-path\n")
+        sys.stderr.write("\tpython src/featurazition/fit_vectorizer.py train-csv output-path target\n")
         sys.exit(1)
 
     train_input = sys.argv[1]
     output_path = sys.argv[2]
+    target = sys.argv[3]
+
+    params = yaml.safe_load(open("params.yaml"))["fit_vectorizer"]
+    seed = params["seed"]
+    vec_params = params[target]["vectorizer"]
+
+    logger = logging.getLogger(f"fit_vectorizer_{target}")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 

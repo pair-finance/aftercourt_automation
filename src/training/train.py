@@ -67,10 +67,8 @@ if __name__ == "__main__":
 
         # ── Train ──────────────────────────────────────────────────
         logger.info("Training RandomForestClassifier")
-        rf_classifier = RandomForestClassifier(
-            n_estimators=clf_params["n_estimators"],
-            random_state=clf_params["random_state"],
-        )
+        logger.info(f"Classifier params: {clf_params}")
+        rf_classifier = RandomForestClassifier(**clf_params)
         rf_classifier.fit(X_train, y_train)
 
         # Save model via dill (DVC artifact)

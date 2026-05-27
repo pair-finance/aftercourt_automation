@@ -1,6 +1,6 @@
 mlflow:
   tracking_uri: mlruns  # local directory; set to a remote URI (e.g. http://mlflow-server:5000) for shared tracking
-  experiment_name: retrain-ladung-and-pfub-classifiers-27-04-2026
+  experiment_name: vermogensverzeichnis-classifier-27_05_2026
 
 prepare:
   split: 0.20
@@ -23,16 +23,44 @@ prepare:
       lowercase: true
     target_col: is_pfub
 
+  vermogensverzeichnis:
+    aftercourt_preprocessing:
+      normalize_whitespace: true
+      remove_short_lines: true
+      short_line_threshold: 3
+      remove_html_tags: true
+      lowercase: true
+    target_col: is_va
+
 fit_vectorizer:
   seed: 1
-  vectorizer:
-    max_features: 200
-    ngram_range_min: 1
-    ngram_range_max: 1
-    norm: l2
-    min_df: 2
-    max_df: 0.95
-    lowercase: false
+  ladung:
+    vectorizer:
+      max_features: 200
+      ngram_range_min: 1
+      ngram_range_max: 1
+      norm: l2
+      min_df: 2
+      max_df: 0.95
+      lowercase: false
+  pfub:
+    vectorizer:
+      max_features: 200
+      ngram_range_min: 1
+      ngram_range_max: 1
+      norm: l2
+      min_df: 2
+      max_df: 0.95
+      lowercase: false
+  vermogensverzeichnis:
+    vectorizer:
+      max_features: 200
+      ngram_range_min: 1
+      ngram_range_max: 1
+      norm: l2
+      min_df: 2
+      max_df: 0.95
+      lowercase: false
 
 train:
   seed: 42
@@ -44,9 +72,16 @@ train:
     classifier:
       n_estimators: 100
       random_state: 42
+  vermogensverzeichnis:
+    classifier:
+      n_estimators: 100
+      random_state: 42
+      class_weight: balanced
 
 evaluate:
   ladung:
     threshold: 0.95
   pfub:
+    threshold: 0.5
+  vermogensverzeichnis:
     threshold: 0.5

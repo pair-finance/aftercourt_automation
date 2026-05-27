@@ -6,10 +6,18 @@ artifacts:
     path: data/raw/final_raw_data.csv
     type: dataset
     desc: The raw dataset containing document text, metadata and labels. Starting point for all targets.
-  tf-idf-vectorizer:
-    path: models/vectorizers/vectorizer.dill
+  tf-idf-vectorizer-ladung:
+    path: models/vectorizers/ladung_vectorizer.dill
     type: model
-    desc: Shared TF-IDF vectorizer fitted on training data. Reused across all targets.
+    desc: TF-IDF vectorizer fitted on ladung training data.
+  tf-idf-vectorizer-pfub:
+    path: models/vectorizers/pfub_vectorizer.dill
+    type: model
+    desc: TF-IDF vectorizer fitted on pfub training data.
+  tf-idf-vectorizer-vermogensverzeichnis:
+    path: models/vectorizers/vermogensverzeichnis_vectorizer.dill
+    type: model
+    desc: TF-IDF vectorizer fitted on vermögensverzeichnis training data.
   ladung-rf-classifier:
     path: models/classification/ladung_rf_classifier.dill
     type: model
@@ -18,6 +26,10 @@ artifacts:
     path: models/classification/pfub_rf_classifier.dill
     type: model
     desc: Random Forest classifier for pfub documents.
+  vermogensverzeichnis-rf-classifier:
+    path: models/classification/vermogensverzeichnis_rf_classifier.dill
+    type: model
+    desc: Random Forest classifier for vermögensverzeichnis documents.
 
 # ────────────────────────────────────────────────────────────────
 # Stages: the ML pipeline.
@@ -38,6 +50,7 @@ stages:
     foreach:
       - ladung
       - pfub
+      - vermogensverzeichnis
     do:
       cmd: python src/prepare/prepare.py data/raw/final_raw_data.csv ${item}
       deps:
@@ -52,36 +65,39 @@ stages:
         - data/prepared/${item}/train.csv
 
   # ── fit_vectorizer ───────────────────────────────────────────
-  # Fits a shared TF-IDF vectorizer on the ladung training set.
-  # Since the target does not affect vectorizer fitting, this stage is outside the foreach loop and runs only once.
-  # Shared across all targets — NOT inside the foreach loop.
-  # Must run after prepare@ladung.
+  # Fits a TF-IDF vectorizer per target on that target's training set.
+  # One stage per target: fit_vectorizer@ladung, fit_vectorizer@pfub, …
   fit_vectorizer:
-    desc: Fit a shared TF-IDF vectorizer on ladung training data.
-    cmd: python src/featurazition/fit_vectorizer.py data/prepared/ladung/train.csv models/vectorizers/vectorizer.dill
-    deps:
-      - src/featurazition/fit_vectorizer.py
-      - data/prepared/ladung/train.csv
-    params:
-      - fit_vectorizer.seed
-      - fit_vectorizer.vectorizer
-    outs:
-      - models/vectorizers/vectorizer.dill
+    foreach:
+      - ladung
+      - pfub
+      - vermogensverzeichnis
+    do:
+      cmd: python src/featurazition/fit_vectorizer.py data/prepared/${item}/train.csv models/vectorizers/${item}_vectorizer.dill ${item}
+      deps:
+        - src/featurazition/fit_vectorizer.py
+        - data/prepared/${item}/train.csv
+      params:
+        - fit_vectorizer.seed
+        - fit_vectorizer.${item}.vectorizer
+      outs:
+        - models/vectorizers/${item}_vectorizer.dill
 
   # ── featurize ────────────────────────────────────────────────
-  # Transforms prepared text into TF-IDF feature matrices using the shared vectorizer.
+  # Transforms prepared text into TF-IDF feature matrices using the per-target vectorizer.
   # One stage per target: featurize@ladung, featurize@pfub, …
   featurize:
     foreach:
       - ladung
       - pfub
+      - vermogensverzeichnis
     do:
-      cmd: python src/featurazition/featurazition.py data/prepared/${item} models/vectorizers/vectorizer.dill data/featurized/${item} ${item}
+      cmd: python src/featurazition/featurazition.py data/prepared/${item} models/vectorizers/${item}_vectorizer.dill data/featurized/${item} ${item}
       deps:
         - src/featurazition/featurazition.py
         - data/prepared/${item}/train.csv
         - data/prepared/${item}/test.csv
-        - models/vectorizers/vectorizer.dill
+        - models/vectorizers/${item}_vectorizer.dill
       params:
         - prepare.${item}.target_col
       outs:
@@ -97,6 +113,7 @@ stages:
     foreach:
       - ladung
       - pfub
+      - vermogensverzeichnis
     do:
       cmd: python src/training/train.py data/featurized/${item} models/classification/${item}_rf_classifier.dill ${item}
       deps:
@@ -116,6 +133,7 @@ stages:
     foreach:
       - ladung
       - pfub
+      - vermogensverzeichnis
     do:
       cmd: python src/eval/eval.py models/classification/${item}_rf_classifier.dill data/featurized/${item} data/evaluation/${item} ${item}
       deps:
