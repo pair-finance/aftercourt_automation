@@ -94,3 +94,26 @@ def search_egvp_id_in_exported_and_archived(
             break
 
     return result
+
+if __name__ == "__main__":
+    no_data_in_db_ids = [
+        "NRW_B21779880137380aa247fae-d9da-414e-930a-29e8a89fbbe8",
+        "NRW_B21779878609522212a62a3-48ac-4204-b804-1e9631d1ef9c",
+        "NRW_B21779876441224117f26b7-4ce4-420a-96f8-ab88d6db00fa",
+        "NRW_B217798765963076f897f9b-8c9c-4a8d-a03d-27c8385af8d9",
+        "NRW_B217798769463350961754c-975b-41fe-bd0e-145e3e157917",
+        "NRW_B21779871446660a621ebf1-854d-4f1d-997b-5393f7845be9",
+        "NRW_B217798701706015a4f3e97-72ec-4ad9-a3bb-5026e714d942",
+    ]
+    start = date(2026, 5, 1)
+    end = date(2026, 6, 1)
+    result = {}
+    for egvp_id in no_data_in_db_ids:
+        print(f"Searching for EGVP ID: {egvp_id}")
+        search_result = search_egvp_id_in_exported_and_archived(egvp_id, start, end)
+        result[egvp_id] = search_result
+    result_path = "egvp_id_search_results.json"
+    with open(result_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2)
+    print(f"Search completed. Results saved to {result_path}")
+    

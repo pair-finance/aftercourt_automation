@@ -5,6 +5,19 @@ from typing import Any, Dict, List
 import boto3
 import pandas as pd
 
+# USE OF GET DATA BY ATTACHMENT ID 
+
+"""
+from python_utilities.db_connection import DbConnection
+import boto3
+analytics_db = DbConnection('ANALYTICS', 'PROD_RDS')
+# Create session with specific profile
+session = boto3.Session(profile_name='739275445236_DataScienceUser')
+s3 = session.client('s3')
+
+get_data_by_attachment_id(a_id, analytics_db, s3, pdf_download=True, pdf_download_dir="/Users/melih.gorgulu/Desktop/Projects/aftercourt_automation/assets/pdfs/tmp")
+"""
+
 
 def get_texts_from_textract_outputs(textract_outputs: List[Dict[str, Any]]) -> List[str]:
     raw_text_outputs = []
@@ -167,15 +180,31 @@ def get_data_by_egvp_id(egvp_id: str, analytics_db, s3, pdf_download: bool = Fal
         if prob_data.empty:
             prob_ladung = "N/A"
             prob_pfub = "N/A"
+            prob_vermogenverzeichnis = "N/A"
         else:
-            prob_ladung = prob_data[prob_data['type']=="aftercourt_classification_ladung"]['value'].values[0]
-            prob_pfub = prob_data[prob_data['type']=="aftercourt_classification_pfub"]['value'].values[0]
+            _ladung = prob_data[prob_data['type']=="aftercourt_classification_ladung"]['value'].values
+            _pfub = prob_data[prob_data['type']=="aftercourt_classification_pfub"]['value'].values
+            _vv = prob_data[prob_data['type']=="aftercourt_classification_vermogenverzeichnis"]['value'].values
+            prob_ladung = _ladung[0] if len(_ladung) else "N/A"
+            prob_pfub = _pfub[0] if len(_pfub) else "N/A"
+            prob_vermogenverzeichnis = _vv[0] if len(_vv) else "N/A"
+
+        def _get_pred_value(model_name: str, subtype: str) -> str:
+            vals = attch_preds[(attch_preds['model_name'] == model_name) & (attch_preds['subtype'] == subtype)]['value'].values
+            return vals[0] if len(vals) else "N/A"
+
+        invoice_start_page = _get_pred_value('invoice_detection_egvp', 'start_page')
+        invoice_end_page = _get_pred_value('invoice_detection_egvp', 'end_page')
+        invoice_is_inside = _get_pred_value('invoice_detection_egvp', 'is_invoice_inside')
+        pfub_is_pfub = _get_pred_value('pfub_erlass_egvp', 'is_pfub')
+        pfub_is_invoice_inside = _get_pred_value('pfub_erlass_egvp', 'is_invoice_inside')
         
         if class_pred_type.empty:
             if verbose:
                 print(f"{GRAY}│{RESET}    {RED}⚠️  NOT LADUNG OR PFUB! {RESET}")
-                print(f"{GRAY}│{RESET}    {YELLOW}Prob Ladung:{RESET} {MAGENTA}{prob_ladung}{RESET}")
-                print(f"{GRAY}│{RESET}    {YELLOW}Prob Pfub:{RESET}   {MAGENTA}{prob_pfub}{RESET}")
+                print(f"{GRAY}│{RESET}    {YELLOW}Prob Ladung:{RESET}              {MAGENTA}{prob_ladung}{RESET}")
+                print(f"{GRAY}│{RESET}    {YELLOW}Prob Pfub:{RESET}                {MAGENTA}{prob_pfub}{RESET}")
+                print(f"{GRAY}│{RESET}    {YELLOW}Prob Vermogenverzeichnis:{RESET} {MAGENTA}{prob_vermogenverzeichnis}{RESET}")
         else:
             pred = None
             if 'ladung' in class_pred_type.values[0]:
@@ -183,16 +212,23 @@ def get_data_by_egvp_id(egvp_id: str, analytics_db, s3, pdf_download: bool = Fal
             elif 'pfub' in class_pred_type.values[0]:
                 pred = 'pfub'
             if verbose:
-                print(f"{GRAY}│{RESET}    {YELLOW}Class:{RESET}      {GREEN}{BOLD}{pred}{RESET}")
-                print(f"{GRAY}│{RESET}    {YELLOW}Prob Ladung:{RESET} {MAGENTA}{prob_ladung}{RESET}")
-                print(f"{GRAY}│{RESET}    {YELLOW}Prob Pfub:{RESET}   {MAGENTA}{prob_pfub}{RESET}")
-            
-        
+                print(f"{GRAY}│{RESET}    {YELLOW}Class:{RESET}                   {GREEN}{BOLD}{pred}{RESET}")
+                print(f"{GRAY}│{RESET}    {YELLOW}Prob Ladung:{RESET}              {MAGENTA}{prob_ladung}{RESET}")
+                print(f"{GRAY}│{RESET}    {YELLOW}Prob Pfub:{RESET}                {MAGENTA}{prob_pfub}{RESET}")
+                print(f"{GRAY}│{RESET}    {YELLOW}Prob Vermogenverzeichnis:{RESET} {MAGENTA}{prob_vermogenverzeichnis}{RESET}")
+
         if verbose:
+            print(f"{GRAY}│{RESET}    {CYAN}— invoice_detection_egvp —{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}Start Page:{RESET}        {MAGENTA}{invoice_start_page}{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}End Page:{RESET}          {MAGENTA}{invoice_end_page}{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}Is Invoice Inside:{RESET} {MAGENTA}{invoice_is_inside}{RESET}")
+            print(f"{GRAY}│{RESET}    {CYAN}— pfub_erlass_egvp —{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}Is Pfub:{RESET}           {MAGENTA}{pfub_is_pfub}{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}Is Invoice Inside:{RESET} {MAGENTA}{pfub_is_invoice_inside}{RESET}")
             print(f"{GRAY}└{'─' * 98}{RESET}\n")
     
     
-    return data[[col for col in cols if col in data.columns] + ['text']]  # Ensure only existing columns are selected
+    return data[[col for col in cols + ['text'] if col in data.columns]]  # Ensure only existing columns are selected
 
 
 def get_data_by_ticket_uuid(ticket_uuid: str, analytics_db, s3, pdf_download: bool = False, pdf_download_dir: str = None) -> pd.DataFrame:
@@ -257,7 +293,7 @@ def get_data_by_ticket_uuid(ticket_uuid: str, analytics_db, s3, pdf_download: bo
         print(f"📥 PDF downloaded to: {pdf_download_path}")
     
     
-    return data[[col for col in cols if col in data.columns] + ['text']]  # Ensure only existing columns are selected
+    return data[[col for col in cols + ['text'] if col in data.columns]]  # Ensure only existing columns are selected
 
 
 
@@ -351,15 +387,28 @@ def get_data_by_attachment_id(attachment_id: str, analytics_db, s3, pdf_download
     if prob_data.empty:
         prob_ladung = "N/A"
         prob_pfub = "N/A"
+        prob_vermogenverzeichnis = "N/A"
     else:
         prob_ladung = prob_data[prob_data['type'] == "aftercourt_classification_ladung"]['value'].values[0] if not prob_data[prob_data['type'] == "aftercourt_classification_ladung"].empty else "N/A"
         prob_pfub = prob_data[prob_data['type'] == "aftercourt_classification_pfub"]['value'].values[0] if not prob_data[prob_data['type'] == "aftercourt_classification_pfub"].empty else "N/A"
+        prob_vermogenverzeichnis = prob_data[prob_data['type'] == "aftercourt_classification_vermogenverzeichnis"]['value'].values[0] if not prob_data[prob_data['type'] == "aftercourt_classification_vermogenverzeichnis"].empty else "N/A"
+
+    def _get_pred_value(model_name: str, subtype: str) -> str:
+        vals = data[(data['model_name'] == model_name) & (data['subtype'] == subtype)]['value'].values
+        return vals[0] if len(vals) else "N/A"
+
+    invoice_start_page = _get_pred_value('invoice_detection_egvp', 'start_page')
+    invoice_end_page = _get_pred_value('invoice_detection_egvp', 'end_page')
+    invoice_is_inside = _get_pred_value('invoice_detection_egvp', 'is_invoice_inside')
+    pfub_is_pfub = _get_pred_value('pfub_erlass_egvp', 'is_pfub')
+    pfub_is_invoice_inside = _get_pred_value('pfub_erlass_egvp', 'is_invoice_inside')
 
     if class_pred_type.empty:
         if verbose:
             print(f"{GRAY}│{RESET}    {RED}⚠️  NOT LADUNG OR PFUB! {RESET}")
-            print(f"{GRAY}│{RESET}    {YELLOW}Prob Ladung:{RESET} {MAGENTA}{prob_ladung}{RESET}")
-            print(f"{GRAY}│{RESET}    {YELLOW}Prob Pfub:{RESET}   {MAGENTA}{prob_pfub}{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}Prob Ladung:{RESET}              {MAGENTA}{prob_ladung}{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}Prob Pfub:{RESET}                {MAGENTA}{prob_pfub}{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}Prob Vermogenverzeichnis:{RESET} {MAGENTA}{prob_vermogenverzeichnis}{RESET}")
     else:
         pred = None
         if 'ladung' in class_pred_type.values[0]:
@@ -367,14 +416,22 @@ def get_data_by_attachment_id(attachment_id: str, analytics_db, s3, pdf_download
         elif 'pfub' in class_pred_type.values[0]:
             pred = 'pfub'
         if verbose:
-            print(f"{GRAY}│{RESET}    {YELLOW}Class:{RESET}      {GREEN}{BOLD}{pred}{RESET}")
-            print(f"{GRAY}│{RESET}    {YELLOW}Prob Ladung:{RESET} {MAGENTA}{prob_ladung}{RESET}")
-            print(f"{GRAY}│{RESET}    {YELLOW}Prob Pfub:{RESET}   {MAGENTA}{prob_pfub}{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}Class:{RESET}                   {GREEN}{BOLD}{pred}{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}Prob Ladung:{RESET}              {MAGENTA}{prob_ladung}{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}Prob Pfub:{RESET}                {MAGENTA}{prob_pfub}{RESET}")
+            print(f"{GRAY}│{RESET}    {YELLOW}Prob Vermogenverzeichnis:{RESET} {MAGENTA}{prob_vermogenverzeichnis}{RESET}")
 
     if verbose:
+        print(f"{GRAY}│{RESET}    {CYAN}— invoice_detection_egvp —{RESET}")
+        print(f"{GRAY}│{RESET}    {YELLOW}Start Page:{RESET}        {MAGENTA}{invoice_start_page}{RESET}")
+        print(f"{GRAY}│{RESET}    {YELLOW}End Page:{RESET}          {MAGENTA}{invoice_end_page}{RESET}")
+        print(f"{GRAY}│{RESET}    {YELLOW}Is Invoice Inside:{RESET} {MAGENTA}{invoice_is_inside}{RESET}")
+        print(f"{GRAY}│{RESET}    {CYAN}— pfub_erlass_egvp —{RESET}")
+        print(f"{GRAY}│{RESET}    {YELLOW}Is Pfub:{RESET}           {MAGENTA}{pfub_is_pfub}{RESET}")
+        print(f"{GRAY}│{RESET}    {YELLOW}Is Invoice Inside:{RESET} {MAGENTA}{pfub_is_invoice_inside}{RESET}")
         print(f"{GRAY}└{'─' * 98}{RESET}\n")
 
-    return data[[col for col in cols if col in data.columns] + ['text']]
+    return data[[col for col in cols + ['text'] if col in data.columns]]
 
 
 def download_pdf_by_document_s3_info(s3, document_s3_bucket: str, document_s3_key: str, download_dir: str, file_name: str = None) -> str:

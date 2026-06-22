@@ -498,3 +498,22 @@ def parse_local_pdfs_with_textract(
         object_keys.append(object_key)
 
     return parse_pdfs_with_textract(object_keys) if not use_page_markers else parse_pdfs_with_pagemarkers_with_textract(object_keys)
+
+
+def text_from_s3_link(s3_link: str) -> str:
+    import json
+    import boto3
+
+    session = boto3.Session(
+        region_name="eu-central-1",
+        profile_name="739275445236_DataScienceUser",
+    )
+    s3_client = session.client("s3")
+
+    """Download a Textract-blocks JSON from S3 and merge LINE blocks into text."""
+    bucket, key = s3_link.replace("s3://", "").split("/", 1)
+    obj = s3_client.get_object(Bucket=bucket, Key=key)
+    blocks = json.loads(obj["Body"].read())
+    if isinstance(blocks, dict):
+        blocks = blocks.get("Blocks", [])
+    return "\n".join(b["Text"] for b in blocks if b.get("BlockType") == "LINE")
