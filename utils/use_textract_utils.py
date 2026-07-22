@@ -16,9 +16,12 @@ text from documents stored in S3. This module provides:
 
 import awswrangler.secretsmanager as sm
 import boto3
+import json
 import logging
 import os
-from typing import Dict, List
+import requests
+from botocore.exceptions import ClientError
+from typing import Dict, List, Iterable, Tuple
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -498,6 +501,197 @@ def parse_local_pdfs_with_textract(
         object_keys.append(object_key)
 
     return parse_pdfs_with_textract(object_keys) if not use_page_markers else parse_pdfs_with_pagemarkers_with_textract(object_keys)
+
+
+def _s3_find_existing_key(s3_client, bucket: str, key_base: str, attachment_id: str):
+    """Return the existing S3 key for ``attachment_id`` (any extension), or None.
+
+    Matches by the stable ``attachment_id`` rather than a full key with a
+    URL-derived extension, so the upload-skip works even when the source
+    (token) URL or its ``name=`` parameter changes between runs. An object is
+    considered a match only when its filename (without extension) is exactly
+    ``attachment_id`` - this avoids ``16801640-1`` matching ``16801640-10``.
+    """
+    prefix = os.path.join(key_base, attachment_id)
+    paginator = s3_client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            if os.path.splitext(os.path.basename(key))[0] == attachment_id:
+                return key
+    return None
+
+
+def _s3_object_exists(s3_client, bucket: str, key: str) -> bool:
+    """Return True if an object already exists at ``s3://bucket/key``."""
+    try:
+        s3_client.head_object(Bucket=bucket, Key=key)
+        return True
+    except ClientError as e:
+        if e.response["Error"]["Code"] in ("404", "NoSuchKey", "NotFound"):
+            return False
+        raise
+
+
+def parse_url_attachments_with_textract(
+    attachments: Iterable[Tuple[str, str]],
+    s3_object_key_base: str,
+    s3_bucket_name: str = ModelConfig.ocr_s3_bucket,
+    use_page_markers: bool = False,
+    skip_if_exists: bool = True,
+    skip_upload: bool = False,
+    request_timeout: int = 60,
+    cache_path: str = None,
+    batch_size: int = 100,
+) -> Dict[str, str]:
+    """Parse attachments from token URLs using Textract, streaming bytes straight to S3.
+
+    Unlike :func:`parse_local_pdfs_with_textract`, this avoids the local-disk
+    round-trip: each attachment is downloaded from its (pre-signed/token) URL
+    and uploaded to S3 in memory. S3 itself acts as the upload cache - when
+    ``skip_if_exists`` is True, an attachment whose object key already exists
+    in the bucket is not re-uploaded.
+
+    Textract *results* are additionally cached to a local JSON file
+    (``cache_path``) keyed by S3 object key, so re-runs skip already-OCR'd
+    documents and avoid re-incurring Textract cost/time. Results are persisted
+    after each batch.
+
+    Args:
+        attachments: Iterable of ``(attachment_id, url)`` pairs. The
+            ``attachment_id`` is used to build a stable S3 object key.
+        s3_object_key_base: S3 key prefix under which files are uploaded
+            (e.g. "ocr_source_files/letters").
+        s3_bucket_name: Target S3 bucket. Defaults to ModelConfig.ocr_s3_bucket.
+        use_page_markers: If True, returned text includes ``<page_N>`` markers.
+        skip_if_exists: If True, skip the upload when the object already exists.
+        skip_upload: If True, never download from URLs or upload to S3. Assumes
+            every attachment is already present in S3; object keys are resolved
+            by looking up the existing S3 object for each ``attachment_id``.
+        request_timeout: Per-request download timeout in seconds.
+        cache_path: Optional path to a JSON file used to cache Textract results
+            keyed by S3 object key. If None, no result caching is performed.
+        batch_size: Number of documents to OCR per batch before persisting the
+            cache.
+
+    Returns:
+        Dict mapping each S3 object key to the extracted text string, covering
+        all input attachments (from cache and freshly parsed).
+    """
+    session = boto3.Session(
+        region_name="eu-central-1",
+        profile_name="739275445236_DataScienceUser",
+    )
+    s3_client = session.client("s3")
+
+    # Load Textract-result cache.
+    textract_cache: Dict[str, str] = {}
+    if cache_path and os.path.exists(cache_path):
+        with open(cache_path, "r") as f:
+            textract_cache = json.load(f)
+    logger.info("[Textract Cache] Loaded %d cached entries", len(textract_cache))
+
+    # Upload to S3 (skipping cached/existing) and collect object keys to parse.
+    attachments = list(attachments)
+    total_attachments = len(attachments)
+    logger.info("[Upload] Starting upload phase for %d attachments", total_attachments)
+
+    object_keys: List[str] = []
+    keys_to_parse: List[str] = []
+    uploaded = 0
+    upload_skipped = 0
+    cache_hits = 0
+    download_failed = 0
+    progress_every = 25  # emit a progress line at least this often
+
+    # When skipping the upload entirely, resolve object keys from the existing
+    # Textract cache (mapping attachment_id -> cached key) so we never hit S3.
+    cache_key_by_attachment_id: Dict[str, str] = {}
+    if skip_upload:
+        for cached_key in textract_cache:
+            cache_key_by_attachment_id[os.path.splitext(os.path.basename(cached_key))[0]] = cached_key
+
+    for idx, (attachment_id, url) in enumerate(attachments, start=1):
+        # Resolve the S3 key. If a file for this attachment_id already exists in
+        # S3 (regardless of extension), reuse that exact key so we can skip the
+        # upload. This makes the skip robust to URL/extension changes between runs.
+        if skip_upload:
+            # No S3 calls: prefer the cached key, otherwise build it from the URL.
+            existing_key = cache_key_by_attachment_id.get(attachment_id)
+        else:
+            existing_key = (
+                _s3_find_existing_key(s3_client, s3_bucket_name, s3_object_key_base, attachment_id)
+                if skip_if_exists else None
+            )
+        if existing_key is not None:
+            object_key = existing_key
+        else:
+            ext = os.path.splitext(url.split("name=")[-1])[-1] if "name=" in url else ".pdf"
+            object_key = os.path.join(s3_object_key_base, f"{attachment_id}{ext}")
+        object_keys.append(object_key)
+
+        # Already OCR'd -> no need to upload or re-parse.
+        if object_key in textract_cache:
+            cache_hits += 1
+        else:
+            keys_to_parse.append(object_key)
+
+            if skip_upload or existing_key is not None:
+                upload_skipped += 1
+                logger.info(
+                    "[Upload] Skipped '%s' (already in S3; %d skipped so far)",
+                    object_key, upload_skipped,
+                )
+            else:
+                resp = requests.get(url, timeout=request_timeout)
+                if resp.status_code != 200:
+                    download_failed += 1
+                    logger.warning(
+                        "[Upload] Download failed for attachment '%s' (HTTP %s)",
+                        attachment_id, resp.status_code,
+                    )
+                else:
+                    s3_client.put_object(Bucket=s3_bucket_name, Key=object_key, Body=resp.content)
+                    uploaded += 1
+                    logger.info(
+                        "[Upload] Uploaded '%s' (%d uploaded so far)", object_key, uploaded
+                    )
+
+        # Periodic running summary so progress/remaining is always visible.
+        if idx % progress_every == 0 or idx == total_attachments:
+            processed = idx
+            remaining = total_attachments - processed
+            logger.info(
+                "[Upload] Progress %d/%d (%.1f%%) | uploaded=%d, already_in_s3=%d, "
+                "cache_hits=%d, download_failed=%d, remaining=%d",
+                processed, total_attachments, 100.0 * processed / max(total_attachments, 1),
+                uploaded, upload_skipped, cache_hits, download_failed, remaining,
+            )
+
+    logger.info(
+        "[Upload] Complete: %d uploaded, %d already in S3, %d cache hits, %d download failed; "
+        "%d to OCR out of %d total",
+        uploaded, upload_skipped, cache_hits, download_failed, len(keys_to_parse), total_attachments,
+    )
+
+    # OCR remaining documents in batches, persisting the cache after each batch.
+    parse_fn = parse_pdfs_with_pagemarkers_with_textract if use_page_markers else parse_pdfs_with_textract
+    for batch_start in range(0, len(keys_to_parse), batch_size):
+        batch = keys_to_parse[batch_start:batch_start + batch_size]
+        batch_num = batch_start // batch_size + 1
+        total_batches = (len(keys_to_parse) + batch_size - 1) // batch_size
+        logger.info("[Textract] Processing batch %d/%d (%d files)", batch_num, total_batches, len(batch))
+
+        new_results = parse_fn(batch)
+        textract_cache.update(new_results)
+
+        if cache_path:
+            with open(cache_path, "w") as f:
+                json.dump(textract_cache, f)
+            logger.info("[Textract] Cached batch %d/%d, total cached: %d", batch_num, total_batches, len(textract_cache))
+
+    # Return results for all requested attachments (cache + freshly parsed).
+    return {key: textract_cache.get(key, "") for key in object_keys}
 
 
 def text_from_s3_link(s3_link: str) -> str:

@@ -5,6 +5,7 @@ Run with:
 """
 import os
 import sys
+import json
 import tempfile
 from datetime import date, timedelta
 
@@ -53,6 +54,52 @@ def fetch_export_archive(egvp_id: str, start_date: date, end_date: date) -> dict
     )
 
 
+@st.cache_data(show_spinner="Fetching final intents from egvp_intents...")
+def fetch_egvp_intents(attachment_ids: tuple, aws_profile: str) -> dict:
+    """Map attachment id -> the final intent entry sent to the EGVP side.
+
+    Reads the ``egvp_intents`` table. The ``intents`` column holds a JSON list
+    of per-attachment entries, each with a flat ``attachment_id``,
+    ``aftercourt_type`` (the final intent), ``is_aftercourt``,
+    ``full_auto_confidence`` and extracted ``params``. For each attachment we
+    read its row and pick the entry whose ``attachment_id`` matches.
+    """
+    intent_map: dict = {}
+    if not attachment_ids:
+        return intent_map
+
+    analytics_db, _ = get_clients(aws_profile)
+    ids_sql = ", ".join(f"'{a}'" for a in attachment_ids)
+    query = f"""
+        SELECT attachment_id, intents, ready_for_automation, created_at
+        FROM egvp_intents
+        WHERE attachment_id IN ({ids_sql})
+        ORDER BY created_at DESC
+    """
+    df = analytics_db.sql_to_df(query)
+
+    for _, row in df.iterrows():
+        aid = str(row["attachment_id"])
+        if aid in intent_map:
+            continue  # rows are ordered newest first; keep the latest
+        intents_raw = row["intents"]
+        try:
+            intents = json.loads(intents_raw) if isinstance(intents_raw, str) else intents_raw
+        except (TypeError, ValueError):
+            continue
+        if not intents:
+            continue
+        entry = next(
+            (e for e in intents if str(e.get("attachment_id")) == aid),
+            intents[0],
+        )
+        entry = dict(entry)
+        entry["ready_for_automation"] = row.get("ready_for_automation")
+        intent_map[aid] = entry
+
+    return intent_map
+
+
 def _derive_dates_from_data(data: pd.DataFrame, margin_days: int = 1):
     s3_key = data.iloc[0]["document_s3_key"]
     year, month, day = s3_key.split("/")[1].split("-")
@@ -62,6 +109,52 @@ def _derive_dates_from_data(data: pd.DataFrame, margin_days: int = 1):
         doc_date - timedelta(days=margin_days),
         doc_date + timedelta(days=margin_days),
     )
+
+
+def _is_true(value) -> bool:
+    """Normalise the stringified booleans stored in llm_attachments_predictions.
+
+    Values may be stored as ``True``, ``'True'`` or even quoted like ``"'True'"``.
+    """
+    if isinstance(value, str):
+        value = value.strip().strip("'\"").strip().lower()
+    return value in (True, 1, "true", "1", "yes")
+
+
+# The per-model signals we care about, in display order: (model type, subtype).
+KEY_PREDICTIONS = [
+    ("vermogenverzeichnis_egvp", "is_va"),
+    ("drittauskunft_egvp", "is_dritt"),
+    ("pfub_erlass_egvp", "is_pfub"),
+    ("pfub_erlass_egvp", "is_invoice_inside"),
+    ("invoice_detection_egvp", "is_invoice_inside"),
+    ("invoice_detection_egvp", "start_page"),
+    ("invoice_detection_egvp", "end_page"),
+    ("egvp_standalone_invoice", "invoice"),
+]
+
+
+def _clean_value(value):
+    if isinstance(value, str):
+        return value.strip().strip("'\"").strip()
+    return value
+
+
+def _key_predictions(sub: pd.DataFrame) -> pd.DataFrame:
+    """Look up the key per-model signals so you can see which model says what.
+
+    Returns a table with one row per (model, field) in ``KEY_PREDICTIONS``,
+    matching on either the ``type`` or ``model_name`` column. Missing signals
+    show ``—``.
+    """
+    rows = []
+    for model, subtype in KEY_PREDICTIONS:
+        match = sub[
+            ((sub["type"] == model) | (sub["model_name"] == model)) & (sub["subtype"] == subtype)
+        ]
+        value = _clean_value(match["value"].iloc[0]) if not match.empty else "—"
+        rows.append({"model": model, "field": subtype, "value": value})
+    return pd.DataFrame(rows, columns=["model", "field", "value"])
 
 
 def main():
@@ -82,7 +175,11 @@ def main():
         placeholder="NRW_B217769188566434bfab1a9-518d-4d4b-9b30-fdc76aea19bd",
     )
 
-    if not st.button("Run", type="primary", disabled=not egvp_id):
+    if st.button("Run", type="primary", disabled=not egvp_id):
+        st.session_state["run_egvp_id"] = egvp_id
+
+    egvp_id = st.session_state.get("run_egvp_id")
+    if not egvp_id:
         st.info("Enter an EGVP ID and press Run.")
         return
 
@@ -107,23 +204,67 @@ def main():
     c3.metric("Origin", str(row0["origin"]))
     c4.metric("Attachments", int(data["attachment_id"].nunique()))
 
-    # ----- get_data_by_egvp_id results -----
-    st.subheader("get_data_by_egvp_id results")
-    st.dataframe(data, use_container_width=True)
+    # ----- Final intents (from egvp_intents DB, matched by attachment id) -----
+    intent_map: dict = {}
+    try:
+        attachment_ids = tuple(str(a) for a in data["attachment_id"].unique())
+        intent_map = fetch_egvp_intents(attachment_ids, aws_profile)
+    except Exception as exc:
+        st.warning(f"Fetching final intents failed: {exc}")
 
-    # ----- Per-attachment view: PDF + textract text + predictions -----
+    # ----- Export / Archive search (raw content) -----
+    export_result = None
+    try:
+        doc_date, start_d, end_d = _derive_dates_from_data(data, margin_days=int(margin_days))
+        export_result = fetch_export_archive(egvp_id, start_d, end_d)
+    except Exception as exc:
+        st.warning(f"Export/Archive search failed: {exc}")
+
+    # ----- Per-attachment view: predictions + intent + PDF + text -----
     st.subheader("Attachments")
     unique_attachments = data["attachment_id"].unique()
 
     for idx, attch in enumerate(unique_attachments, 1):
         sub = data[data["attachment_id"] == attch]
         file_name = sub["file_name"].iloc[0]
-        with st.expander(f"Attachment {idx}/{len(unique_attachments)} — {file_name}", expanded=(idx == 1)):
-            pdf_path = os.path.join(download_dir, f"{egvp_id}_{attch}.pdf")
-            left, right = st.columns([3, 2])
+        intent_entry = intent_map.get(str(attch))
+        intent_label = (intent_entry or {}).get("aftercourt_type", "—")
 
-            with left:
-                st.markdown("**PDF**")
+        with st.expander(
+            f"Attachment {idx}/{len(unique_attachments)} — {file_name}  ·  intent: {intent_label}",
+            expanded=(idx == 1),
+        ):
+            # ----- Key per-model predictions (which model says what) -----
+            st.markdown("**Key model predictions**")
+            st.dataframe(
+                _key_predictions(sub),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            # ----- Final intent sent to EGVP -----
+            st.markdown("**Final intent sent to EGVP**")
+            if intent_entry is None:
+                st.info("No final intent found for this attachment in egvp_intents.")
+            else:
+                is_aftercourt = intent_entry.get("is_aftercourt", False)
+                full_auto = intent_entry.get("full_auto_confidence", False)
+                ready = intent_entry.get("ready_for_automation")
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("Intent", str(intent_entry.get("aftercourt_type", "unknown")))
+                m2.metric("Is aftercourt", "✅ yes" if is_aftercourt else "❌ no")
+                m3.metric("Full auto", "✅ yes" if full_auto else "❌ no")
+                m4.metric("Ready for automation", "✅ yes" if ready else "❌ no")
+                params = intent_entry.get("params", {}) or {}
+                if params:
+                    st.markdown("**Extracted params**")
+                    st.json(params, expanded=False)
+
+            # ----- Tabs: PDF | Predictions | Text (keeps the page compact) -----
+            tab_pdf, tab_preds, tab_text = st.tabs(["📄 PDF", "🤖 Predictions", "📝 Text"])
+
+            with tab_pdf:
+                pdf_path = os.path.join(download_dir, f"{egvp_id}_{attch}.pdf")
                 if os.path.exists(pdf_path):
                     with open(pdf_path, "rb") as f:
                         pdf_bytes = f.read()
@@ -134,36 +275,31 @@ def main():
                         mime="application/pdf",
                         key=f"dl_{attch}",
                     )
-                    # Inline preview via embedded PDF viewer
                     import base64
                     b64 = base64.b64encode(pdf_bytes).decode("utf-8")
                     st.markdown(
                         f'<iframe src="data:application/pdf;base64,{b64}" '
-                        f'width="100%" height="800" type="application/pdf"></iframe>',
+                        f'width="100%" height="600" type="application/pdf"></iframe>',
                         unsafe_allow_html=True,
                     )
                 else:
                     st.warning(f"PDF not found at {pdf_path}")
 
-            with right:
-                st.markdown("**Predictions**")
+            with tab_preds:
                 preds = sub[["model_name", "type", "subtype", "value"]].drop_duplicates()
                 st.dataframe(preds, use_container_width=True, hide_index=True)
 
-                st.markdown("**Textract text**")
+            with tab_text:
                 text = sub["text"].iloc[0] if "text" in sub.columns else ""
-                st.text_area("Text", value=text or "", height=400, key=f"txt_{attch}")
+                st.text_area("Textract text", value=text or "", height=400, key=f"txt_{attch}")
 
-    # ----- Export / Archive search -----
+    # ----- Export / Archive search (raw content) -----
     st.subheader("Exported & Archived content")
-    try:
-        doc_date, start_d, end_d = _derive_dates_from_data(data, margin_days=int(margin_days))
-        st.caption(f"Document date: {doc_date} — searching {start_d} → {end_d}")
-        result = fetch_export_archive(egvp_id, start_d, end_d)
-    except Exception as exc:
-        st.error(f"Export/Archive search failed: {exc}")
+    if export_result is None:
+        st.error("Export/Archive search was not available for this EGVP ID.")
         return
 
+    result = export_result
     c1, c2 = st.columns(2)
     with c1:
         st.markdown(

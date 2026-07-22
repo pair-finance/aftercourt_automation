@@ -566,3 +566,34 @@ def pivot_attachment_predictions(preds: pd.DataFrame) -> pd.DataFrame:
     wide[str_cols] = wide[str_cols].fillna('none')
 
     return wide
+
+
+def get_text_by_attachment_id(attachment_id: str, analytics_db, s3) -> str:
+    """Return the Textract text for a given attachment id.
+
+    Args:
+        attachment_id: The attachment id to look up.
+        analytics_db: DbConnection instance used to query the analytics DB.
+        s3: boto3 S3 client used to fetch the Textract output.
+
+    Returns:
+        str: The extracted text. Empty string if no Textract output is found.
+    """
+    query = f"""
+        SELECT textract_jobs.s3_link AS textract_s3_link
+        FROM textract_jobs
+        WHERE textract_jobs.attachment_id = '{attachment_id}'
+        ORDER BY textract_jobs.created_at DESC
+        LIMIT 1
+    """
+    data = analytics_db.sql_to_df(query)
+    if data.empty or pd.isna(data['textract_s3_link'].iloc[0]):
+        print(f"No Textract output found for attachment_id: {attachment_id}")
+        return ""
+
+    textract_text_s3_link = data['textract_s3_link'].iloc[0]
+    bucket_name = textract_text_s3_link.split('/')[2]
+    key_name = '/'.join(textract_text_s3_link.split('/')[3:])
+    response = s3.get_object(Bucket=bucket_name, Key=key_name)
+    textract_data = json.loads(response['Body'].read().decode('utf-8'))
+    return get_texts_from_textract_outputs([textract_data])[0]
