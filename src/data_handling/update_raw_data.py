@@ -75,6 +75,8 @@ def deduplicate_against_existing(raw_data: pd.DataFrame, new_data: pd.DataFrame)
     n_duplicates = len(new_data) - len(deduplicated)
     if n_duplicates > 0:
         print(f"WARNING: Removed {n_duplicates} duplicate rows already present in raw data.")
+        print("These ticket uuids are duplicated: ")
+        print(new_data[new_data['ticket_uuid'].isin(existing_uuids)]['ticket_uuid'])
     else:
         print("No duplicates found.")
     return deduplicated
